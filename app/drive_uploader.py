@@ -18,6 +18,7 @@ Variables de entorno:
 """
 import logging
 import mimetypes
+from datetime import datetime
 from pathlib import Path
 from . import config
 
@@ -83,14 +84,31 @@ def _get_service():
         return None
 
 
+def _build_drive_name(original_name: str) -> str:
+    """Prepende timestamp al nombre del archivo para evitar duplicados en Drive.
+
+    Ejemplo: 'Pedido.xlsx' -> '2026-04-26_16-30-45_Pedido.xlsx'
+    El formato sortea cronológicamente al ordenar por nombre en Drive.
+    """
+    ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    p = Path(original_name)
+    return f"{ts}_{p.stem}{p.suffix}"
+
+
 def upload_file(local_path: Path, original_name: str | None = None) -> dict | None:
-    """Sube un archivo a la carpeta configurada. Devuelve {id, name, link} o None."""
+    """Sube un archivo a la carpeta configurada con timestamp prefijo.
+
+    El timestamp evita colisiones cuando llegan dos archivos con el mismo
+    nombre (típicamente cuando EHMO reenvía un pedido corregido).
+    Devuelve {id, name, link} o None.
+    """
     service = _get_service()
     if not service:
         return None
     try:
         from googleapiclient.http import MediaFileUpload
-        name = original_name or local_path.name
+        base_name = original_name or local_path.name
+        drive_name = _build_drive_name(base_name)
         mime_type, _ = mimetypes.guess_type(str(local_path))
         media = MediaFileUpload(
             str(local_path),
@@ -98,7 +116,7 @@ def upload_file(local_path: Path, original_name: str | None = None) -> dict | No
             resumable=False,
         )
         metadata = {
-            "name": name,
+            "name": drive_name,
             "parents": [config.GOOGLE_DRIVE_FOLDER_ID],
         }
         f = service.files().create(

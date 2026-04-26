@@ -1,0 +1,26 @@
+# Configuración para deploy automático en Render
+# Render lee este archivo cuando conectas el repo de GitHub
+
+services:
+  - type: web
+    name: frutaskelly-whatsapp-agent
+    runtime: python
+    plan: free  # cambia a "starter" ($7/mes) para que no se duerma
+    region: oregon
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 120 app.main:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.10
+      - key: ENVIRONMENT
+        value: production
+      # Las variables sensibles se configuran desde el dashboard de Render
+      # NO ponerlas aquí (se subiría a GitHub):
+      # - WHATSAPP_ACCESS_TOKEN
+      # - WHATSAPP_PHONE_NUMBER_ID
+      # - WHATSAPP_VERIFY_TOKEN
+      # - ANTHROPIC_API_KEY
+      # - EHMO_PHONE
+    healthCheckPath: /health
+    autoDeploy: true

@@ -1,0 +1,44 @@
+# Variables de entorno - NUNCA SUBIR
+.env
+.env.local
+.env.production
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# Storage local
+storage/inbox/*
+storage/conversations/*
+!storage/inbox/.gitkeep
+!storage/conversations/.gitkeep
+
+# IDEs
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Distribution
+dist/
+build/
+*.egg-info/

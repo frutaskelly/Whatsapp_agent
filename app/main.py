@@ -9,6 +9,11 @@ from flask import Flask, jsonify
 from . import config
 from .webhook import bp as webhook_bp
 
+# Forzar UTF-8 en stdout para que los emojis no revienten en consola Windows (cp1252)
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 # Logging
 logging.basicConfig(
     level=logging.INFO,

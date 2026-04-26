@@ -3,8 +3,9 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Cargar .env si existe (en producción Render inyecta las vars directo)
-load_dotenv()
+# Cargar .env si existe (en producción Render inyecta las vars directo).
+# override=True para que .env gane sobre vars vacías heredadas del entorno (Windows).
+load_dotenv(override=True)
 
 BASE_DIR = Path(__file__).parent.parent
 
@@ -50,6 +51,6 @@ def validate_config():
         missing.append("ANTHROPIC_API_KEY")
 
     if missing:
-        print(f"⚠️  Variables faltantes: {', '.join(missing)}")
+        print(f"[!] Variables faltantes: {', '.join(missing)}")
         return False
     return True

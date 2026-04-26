@@ -12,6 +12,9 @@ from pathlib import Path
 from flask import Blueprint, request, jsonify
 from . import config
 from .whatsapp_client import WhatsAppClient
+from .message_log import log_message
+from .ai_agent import chat as ai_chat
+from .drive_uploader import upload_file as drive_upload
 
 log = logging.getLogger(__name__)
 bp = Blueprint("webhook", __name__)
@@ -94,6 +97,10 @@ def handle_message(msg: dict, contacts: list):
 
     log.info(f"📩 Mensaje {msg_type} de {from_number} (id={msg_id})")
 
+    # Logueo del mensaje entrante para el dashboard
+    body_preview = _extract_body_preview(msg, msg_type)
+    log_message("in", from_number, msg_type, body_preview, {"id": msg_id})
+
     # Marcar como leído + reaccionar para que vea que lo recibimos
     try:
         wa.mark_as_read(msg_id)
@@ -118,16 +125,18 @@ def handle_message(msg: dict, contacts: list):
 
 
 def handle_text(msg: dict, from_number: str):
-    """Procesa mensaje de texto. Aquí entra el AI agent."""
+    """Procesa mensaje de texto pasándoselo al AI agent (Claude)."""
     text = msg.get("text", {}).get("body", "")
     log.info(f"Texto: {text[:200]}")
 
-    # TODO: pasarle a Claude AI para interpretar
-    # Por ahora solo confirmamos
-    wa.send_text(
-        from_number,
-        f"✓ Recibí tu mensaje. (El agente AI todavía está en construcción, pronto procesaré esto automáticamente)"
-    )
+    try:
+        result = ai_chat(from_number, text)
+        reply = result.get("respuesta_para_ehmo") or "Recibí tu mensaje, déjame revisarlo."
+    except Exception as e:
+        log.exception(f"Error llamando a Claude: {e}")
+        reply = "Tuve un problema técnico, ¿puedes repetir tu mensaje?"
+
+    wa.send_text(from_number, reply)
 
 
 def handle_media(msg: dict, from_number: str, kind: str, ext: str):
@@ -144,6 +153,8 @@ def handle_media(msg: dict, from_number: str, kind: str, ext: str):
 
     result = wa.download_media(media_id, save_path)
     if result:
+        # Subir a Drive en background (si está configurado)
+        drive_upload(save_path)
         wa.send_text(from_number, f"✓ Recibí tu {kind}. Procesando...")
         # TODO: mandar a Claude AI con visión para imágenes
     else:
@@ -178,6 +189,7 @@ def handle_document(msg: dict, from_number: str):
 
     result = wa.download_media(media_id, save_path)
     if result:
+        drive_upload(save_path, original_name=filename_orig)
         wa.send_text(from_number, f"✓ Recibí tu {kind_label}: {filename_orig}. Procesando...")
         # TODO: si es Excel, disparar el procesamiento de pedidos
     else:
@@ -185,6 +197,24 @@ def handle_document(msg: dict, from_number: str):
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
+def _extract_body_preview(msg: dict, msg_type: str) -> str:
+    """Devuelve un texto representativo del mensaje para mostrar en el log."""
+    if msg_type == "text":
+        return msg.get("text", {}).get("body", "")
+    if msg_type == "document":
+        d = msg.get("document", {})
+        return f"[documento: {d.get('filename', '?')}]"
+    if msg_type == "image":
+        cap = msg.get("image", {}).get("caption", "")
+        return f"[imagen]{' — ' + cap if cap else ''}"
+    if msg_type == "audio":
+        return "[audio]"
+    if msg_type == "video":
+        cap = msg.get("video", {}).get("caption", "")
+        return f"[video]{' — ' + cap if cap else ''}"
+    return f"[{msg_type}]"
+
+
 def verify_signature(req) -> bool:
     """Verifica que el webhook venga de Meta usando HMAC-SHA256."""
     signature = req.headers.get("X-Hub-Signature-256", "")

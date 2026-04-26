@@ -57,27 +57,15 @@ def interpret_message(text: str | None = None, attachment_path: Path | None = No
 
     content = []
 
-    # Adjuntar imagen si existe
-    if attachment_path and attachment_path.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp"):
-        media_type = f"image/{attachment_path.suffix.lower().lstrip('.')}"
-        if media_type == "image/jpg":
-            media_type = "image/jpeg"
-        with open(attachment_path, "rb") as f:
-            img_data = base64.standard_b64encode(f.read()).decode()
-        content.append({
-            "type": "image",
-            "source": {
-                "type": "base64",
-                "media_type": media_type,
-                "data": img_data,
-            }
-        })
+    # Adjuntos: imagen, PDF o Excel
+    if attachment_path:
+        content.extend(_attachment_to_blocks(attachment_path))
 
     # Texto
     if text:
         content.append({"type": "text", "text": text})
-    else:
-        content.append({"type": "text", "text": "[Adjunto sin texto - analiza la imagen/documento]"})
+    elif attachment_path:
+        content.append({"type": "text", "text": "[Adjunto sin texto - analiza el documento/imagen]"})
 
     messages = conversation_history or []
     messages.append({"role": "user", "content": content})
@@ -110,9 +98,14 @@ def interpret_message(text: str | None = None, attachment_path: Path | None = No
             }
     except Exception as e:
         log.exception(f"Error llamando a Claude: {e}")
+        # En dev mostramos el error real para depurar; en prod un mensaje amigable.
+        if config.ENVIRONMENT == "development":
+            err_msg = f"[Error AI] {type(e).__name__}: {e}"
+        else:
+            err_msg = "Tuve un problema técnico, ¿puedes repetir tu mensaje?"
         return {
             "intencion": "otro",
-            "respuesta_para_ehmo": "Tuve un problema técnico, ¿puedes repetir tu mensaje?",
+            "respuesta_para_ehmo": err_msg,
             "accion": "nada",
             "datos": {}
         }
@@ -124,7 +117,7 @@ def load_conversation(phone: str) -> list:
     if not conv_file.exists():
         return []
     try:
-        return json.loads(conv_file.read_text())
+        return json.loads(conv_file.read_text(encoding="utf-8"))
     except Exception:
         return []
 
@@ -134,4 +127,86 @@ def save_conversation(phone: str, messages: list):
     conv_file = config.CONVERSATIONS_DIR / f"{phone}.json"
     # Limitar a últimos 20 turnos para no crecer indefinido
     messages = messages[-20:]
-    conv_file.write_text(json.dumps(messages, ensure_ascii=False, indent=2))
+    conv_file.write_text(json.dumps(messages, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def chat(phone: str, text: str, attachment_path: Path | None = None) -> dict:
+    """Procesa un mensaje (texto y/o adjunto) a través de Claude.
+
+    Soporta texto, imagen (jpg/png/webp), PDF y Excel (xlsx/xls).
+    Carga el historial del contacto, llama a Claude, guarda el historial
+    actualizado y devuelve el dict estructurado:
+        {intencion, respuesta_para_ehmo, accion, datos}
+    """
+    history = load_conversation(phone)
+    # Pasar copia para que interpret_message no mute la lista local
+    result = interpret_message(
+        text=text,
+        attachment_path=attachment_path,
+        conversation_history=list(history),
+    )
+    reply = result.get("respuesta_para_ehmo", "") or ""
+
+    user_content = text or ""
+    if attachment_path:
+        suffix = f"[adjunto: {attachment_path.name}]"
+        user_content = f"{user_content}\n{suffix}".strip()
+    history.append({"role": "user", "content": user_content})
+    history.append({"role": "assistant", "content": reply})
+    save_conversation(phone, history)
+    return result
+
+
+# ─── Helpers de adjuntos ──────────────────────────────────────────────────────
+def _attachment_to_blocks(path: Path) -> list[dict]:
+    """Convierte un adjunto a bloques de contenido para la API de Claude."""
+    suffix = path.suffix.lower()
+
+    # Imagen
+    if suffix in (".jpg", ".jpeg", ".png", ".webp", ".gif"):
+        ext = suffix.lstrip(".")
+        media_type = "image/jpeg" if ext == "jpg" else f"image/{ext}"
+        with open(path, "rb") as f:
+            data = base64.standard_b64encode(f.read()).decode()
+        return [{
+            "type": "image",
+            "source": {"type": "base64", "media_type": media_type, "data": data},
+        }]
+
+    # PDF (soporte nativo de Claude)
+    if suffix == ".pdf":
+        with open(path, "rb") as f:
+            data = base64.standard_b64encode(f.read()).decode()
+        return [{
+            "type": "document",
+            "source": {"type": "base64", "media_type": "application/pdf", "data": data},
+        }]
+
+    # Excel: convertir hoja BD (o primera) a texto pipe-separated
+    if suffix in (".xlsx", ".xls"):
+        text = _excel_to_text(path)
+        return [{"type": "text", "text": f"[Adjunto Excel: {path.name}]\n\n{text}"}]
+
+    # Cualquier otro: mensaje de fallback
+    return [{"type": "text", "text": f"[Adjunto no soportado: {path.name}]"}]
+
+
+def _excel_to_text(path: Path, max_rows: int = 1500) -> str:
+    """Lee la hoja BD (o la primera) y la devuelve como texto pipe-separated.
+
+    Limita a max_rows para no reventar la ventana de contexto.
+    """
+    import pandas as pd  # import local: pandas tarda en cargar
+    try:
+        df = pd.read_excel(path, sheet_name="BD")
+        sheet = "BD"
+    except Exception:
+        df = pd.read_excel(path)
+        sheet = "primera hoja"
+    total = len(df)
+    truncated = ""
+    if total > max_rows:
+        df = df.head(max_rows)
+        truncated = f"\n\n[NOTA: el Excel tiene {total} filas, solo se muestran las primeras {max_rows}]"
+    csv_text = df.to_csv(index=False, sep="|")
+    return f"Hoja: {sheet} ({total} filas, {len(df.columns)} columnas)\n\n{csv_text}{truncated}"

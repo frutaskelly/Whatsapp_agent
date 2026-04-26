@@ -3,6 +3,7 @@ import requests
 import logging
 from pathlib import Path
 from . import config
+from .message_log import log_message
 
 log = logging.getLogger(__name__)
 
@@ -30,6 +31,7 @@ class WhatsAppClient:
         }
         r = requests.post(url, json=payload, headers=self.headers, timeout=20)
         log.info(f"send_text -> {to}: {r.status_code}")
+        log_message("out", to, "text", body, {"status_code": r.status_code})
         return r.json()
 
     def send_reaction(self, to: str, message_id: str, emoji: str = "👍") -> dict:

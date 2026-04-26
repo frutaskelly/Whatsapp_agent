@@ -5,6 +5,14 @@
 *.env
 !.env.example
 
+# Credenciales y secretos - NUNCA SUBIR
+secrets/
+*.json
+!.vscode/*.json
+!app/*.json
+!storage/conversations/.gitkeep
+!storage/inbox/.gitkeep
+
 # Python
 __pycache__/
 *.py[cod]
@@ -19,6 +27,8 @@ ENV/
 # Storage local
 storage/inbox/*
 storage/conversations/*
+storage/message_log.jsonl
+storage/raw_webhooks/
 !storage/inbox/.gitkeep
 !storage/conversations/.gitkeep
 

@@ -37,6 +37,20 @@ CONVERSATIONS_DIR = BASE_DIR / os.getenv("CONVERSATIONS_DIR", "storage/conversat
 INBOX_DIR.mkdir(parents=True, exist_ok=True)
 CONVERSATIONS_DIR.mkdir(parents=True, exist_ok=True)
 
+# === Google Drive (OAuth user credentials) ===
+GOOGLE_DRIVE_FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID", "")
+
+
+def _resolve_path(env_value: str) -> str:
+    """Resuelve rutas relativas contra BASE_DIR; las absolutas se devuelven tal cual."""
+    if not env_value:
+        return ""
+    return env_value if os.path.isabs(env_value) else str(BASE_DIR / env_value)
+
+
+GOOGLE_OAUTH_CREDENTIALS = _resolve_path(os.getenv("GOOGLE_OAUTH_CREDENTIALS", ""))
+GOOGLE_OAUTH_TOKEN = _resolve_path(os.getenv("GOOGLE_OAUTH_TOKEN", "secrets/google-drive-token.json"))
+
 
 def validate_config():
     """Valida que las variables críticas estén configuradas."""

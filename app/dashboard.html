@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Frutas Kelly · WhatsApp Agent</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: #0b141a;
+    color: #e9edef;
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    background: #202c33;
+    padding: 12px 20px;
+    border-bottom: 1px solid #2a3942;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  header .meta { font-size: 11px; color: #8696a0; }
+  header .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #00a884; margin-right: 6px; }
+  main { flex: 1; overflow-y: auto; padding: 16px 20px; }
+  .feed { max-width: 760px; margin: 0 auto; }
+  .empty { text-align: center; color: #8696a0; padding: 60px 20px; font-size: 14px; }
+  .msg { display: flex; margin: 6px 0; }
+  .msg.in { justify-content: flex-start; }
+  .msg.out { justify-content: flex-end; }
+  .bubble-wrap { max-width: 70%; }
+  .bubble {
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  .in .bubble { background: #202c33; border-top-left-radius: 0; }
+  .out .bubble { background: #005c4b; border-top-right-radius: 0; }
+  .meta {
+    font-size: 10px;
+    color: #8696a0;
+    margin-top: 3px;
+  }
+  .in .meta { text-align: left; }
+  .out .meta { text-align: right; }
+  .badge {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: #2a3942;
+    font-size: 9px;
+    margin-left: 4px;
+  }
+  .composer {
+    background: #202c33;
+    padding: 10px 16px;
+    border-top: 1px solid #2a3942;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .composer input[type="text"] {
+    flex: 1;
+    background: #2a3942;
+    border: none;
+    color: #e9edef;
+    padding: 10px 14px;
+    border-radius: 20px;
+    font-size: 14px;
+    outline: none;
+  }
+  .composer input[type="text"]:focus { background: #354048; }
+  .composer button {
+    background: #00a884;
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 20px;
+    font-size: 13px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .composer button:hover { background: #008f72; }
+  .composer button:disabled { background: #555; cursor: not-allowed; }
+  .composer .attach-btn {
+    background: #2a3942;
+    color: #8696a0;
+    border: none;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .composer .attach-btn:hover { background: #354048; color: #e9edef; }
+  .composer .attach-btn.has-file { background: #00a884; color: white; }
+  .composer .hint {
+    font-size: 10px;
+    color: #8696a0;
+    padding: 0 4px;
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  footer {
+    background: #111b21;
+    padding: 6px 20px;
+    border-top: 1px solid #2a3942;
+    font-size: 11px;
+    color: #8696a0;
+    text-align: center;
+  }
+  .err { background: #5c1f1f !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🍎 Frutas Kelly · WhatsApp Agent</h1>
+  <div class="meta"><span class="dot"></span><span id="status">conectando...</span></div>
+</header>
+<main><div class="feed" id="feed"></div></main>
+<div class="composer">
+  <button class="attach-btn" id="composer-attach" type="button" title="Adjuntar imagen, PDF o Excel">📎</button>
+  <input type="file" id="composer-file" accept=".jpg,.jpeg,.png,.webp,.pdf,.xlsx,.xls" style="display:none">
+  <input type="text" id="composer-input" placeholder="Escribe un mensaje para probar al AI..." autofocus>
+  <span class="hint" id="composer-hint">simulator</span>
+  <button id="composer-send">Enviar</button>
+</div>
+<footer>Auto-refresh cada 2s · <span id="count">0</span> mensajes en log · modo simulador (no envía a WhatsApp)</footer>
+<script>
+const $ = (id) => document.getElementById(id);
+const escape = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+async function load() {
+  try {
+    const r = await fetch('/api/messages?limit=200');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    render(data);
+    $('status').textContent = 'conectado · servidor activo';
+  } catch (e) {
+    $('status').textContent = 'sin conexión: ' + e.message;
+  }
+}
+
+function render(data) {
+  const feed = $('feed');
+  $('count').textContent = data.messages.length;
+  if (!data.messages.length) {
+    feed.innerHTML = '<div class="empty">Aún no hay mensajes.<br><br>Manda un WhatsApp al número de prueba <b>+1 555 642 8375</b> para verlo aquí.</div>';
+    return;
+  }
+  // Recordar scroll si está pegado abajo
+  const main = document.querySelector('main');
+  const wasAtBottom = main.scrollHeight - main.scrollTop - main.clientHeight < 50;
+
+  feed.innerHTML = data.messages.map(m => {
+    const dirIcon = m.direction === 'in' ? '📩' : '📤';
+    const dirLabel = m.direction === 'in' ? 'de' : '→';
+    const errClass = (m.meta && m.meta.status_code && m.meta.status_code >= 400) ? ' err' : '';
+    const driveLink = m.meta && m.meta.drive_link
+      ? ` · <a href="${escape(m.meta.drive_link)}" target="_blank" style="color:#53bdeb">📂 ver en Drive</a>`
+      : '';
+    return `
+      <div class="msg ${m.direction}">
+        <div class="bubble-wrap">
+          <div class="bubble${errClass}">${escape(m.body)}</div>
+          <div class="meta">
+            ${m.timestamp.replace('T',' ')} · ${dirIcon} ${dirLabel} ${escape(m.phone)}
+            <span class="badge">${escape(m.type)}</span>
+            ${m.meta && m.meta.status_code ? `<span class="badge">HTTP ${m.meta.status_code}</span>` : ''}
+            ${driveLink}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  if (wasAtBottom) main.scrollTop = main.scrollHeight;
+}
+
+async function send() {
+  const input = $('composer-input');
+  const fileInput = $('composer-file');
+  const attachBtn = $('composer-attach');
+  const hint = $('composer-hint');
+  const btn = $('composer-send');
+  const text = input.value.trim();
+  const file = fileInput.files[0];
+  if (!text && !file) return;
+  btn.disabled = true;
+  const oldLabel = btn.textContent;
+  btn.textContent = 'Pensando...';
+
+  const fd = new FormData();
+  fd.append('message', text);
+  if (file) fd.append('file', file);
+
+  input.value = '';
+  fileInput.value = '';
+  attachBtn.classList.remove('has-file');
+  hint.textContent = 'simulator';
+
+  try {
+    const r = await fetch('/api/simulate', { method: 'POST', body: fd });
+    if (!r.ok) {
+      const err = await r.text();
+      console.error('simulate error', err);
+    }
+  } catch (e) {
+    console.error(e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = oldLabel;
+    input.focus();
+    load();
+  }
+}
+
+$('composer-attach').addEventListener('click', () => $('composer-file').click());
+$('composer-file').addEventListener('change', (e) => {
+  const f = e.target.files[0];
+  const attachBtn = $('composer-attach');
+  const hint = $('composer-hint');
+  if (f) {
+    attachBtn.classList.add('has-file');
+    hint.textContent = '📎 ' + f.name;
+  } else {
+    attachBtn.classList.remove('has-file');
+    hint.textContent = 'simulator';
+  }
+});
+$('composer-send').addEventListener('click', send);
+$('composer-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+});
+
+load();
+setInterval(load, 2000);
+</script>
+</body>
+</html>

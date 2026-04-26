@@ -44,6 +44,32 @@ CAMBIO_KW = [
 
 IGNORAR_KW = ["almendra tostada", "palanqueta de cacahuate"]
 
+# Catálogo de hospitales conocidos que SÍ surtimos. Mapea nombre canónico → lista
+# de fingerprints (substrings case-insensitive) que identifican el hospital aunque
+# venga con variantes (H.B.C., abreviaciones, sin acentos, etc.).
+HOSPITALES_CONOCIDOS_SI = {
+    "Hospital Básico Comunitario 12 Camas Berriozabal": ["berriozabal"],
+    "Hospital Básico Comunitario Chiapa de Corzo": ["chiapa de corzo"],
+    "Hospital Básico Comunitario Las Margaritas": ["margaritas"],
+    "Hospital Básico Comunitario Manuel Velasco Suarez Acala": ["manuel velasco", "velasco suarez", "velasco suárez"],
+    "Hospital Básico Comunitario Ángel Albino Corzo": ["ángel albino", "angel albino"],
+    "Hospital Básico Comunitario Dr. Rafael Alfaro Gonzalez Pijijiapan": ["pijijiapan", "rafael alfaro"],
+    "Hospital Básico de Frontera Comalapa": ["frontera comalapa", "comalapa"],
+    "Hospital Chiapas nos une Dr. Jesús Gilberto Gomez Maza": ["chiapas nos une", "gomez maza", "gómez maza"],
+    "Hospital de la Mujer Comitán": ["mujer comitán", "mujer comitan"],
+    "Hospital de la Mujer San Cristóbal de las Casas": ["mujer san cristóbal", "mujer san cristobal"],
+    "Hospital de las Culturas San Cristóbal de las Casas": ["culturas san cristóbal", "culturas san cristobal", "las culturas"],
+    "Hospital General Bicentenario Villaflores": ["bicentenario villaflores", "bicentenario", "villaflores"],
+    "Hospital General de Huixtla": ["huixtla"],
+    "Hospital General de Ocosingo": ["ocosingo"],
+    "Hospital General Dr. Juan C. Corzo Tonalá": ["juan c. corzo", "juan c corzo", "tonalá", "tonala"],
+    "Hospital General Juárez Arriaga": ["juárez arriaga", "juarez arriaga"],
+    "Hospital General María Ignacia Gandulfo Comitán": ["maría ignacia", "maria ignacia", "ignacia gandulfo", "gandulfo"],
+    "Hospital General Tapachula": ["general tapachula", "hospital general tapachula"],
+    "Hospital Regional Dr. Rafael Pascasio Gamboa Tuxtla": ["pascasio gamboa", "rafael pascasio"],
+    "Unidad de Atención a la Salud Mental San Agustín": ["salud mental san agustín", "salud mental san agustin", "salud mental"],
+}
+
 NOMBRES_CORTOS = {
     "Hospital Básico Comunitario Ángel Albino Corzo": "Angel Albino Corzo",
     "Hospital Básico Comunitario Chiapa de Corzo": "Chiapa de Corzo",
@@ -74,6 +100,16 @@ GRIS = "BBBBBB"
 def _is_excluido(nombre):
     n = str(nombre).lower()
     return any(kw in n for kw in EXCLUIDOS_KW)
+
+
+def _hospital_canonico(nombre: str) -> str | None:
+    """Si el nombre coincide con un hospital conocido (regla 1b), devuelve el
+    nombre canónico. Si no es conocido (ni excluido), devuelve None."""
+    n = nombre.lower()
+    for canonical, fingerprints in HOSPITALES_CONOCIDOS_SI.items():
+        if any(fp in n for fp in fingerprints):
+            return canonical
+    return None
 
 
 def _is_cambio(alimento):
@@ -129,8 +165,16 @@ def _extraer_fecha(filename: str) -> str:
 
 
 def procesar_pedido(input_excel: Path, output_dir: Path,
-                    original_filename: str | None = None) -> Path | None:
-    """Procesa un Excel EHMO con hoja BD. Devuelve el path del archivo generado.
+                    original_filename: str | None = None) -> dict | None:
+    """Procesa un Excel EHMO con hoja BD.
+
+    Devuelve un dict con:
+      - output_path: Path del Excel generado
+      - hospitales_si: list[str] hospitales que sí surtimos (incluidos en pedido)
+      - hospitales_excluidos_detectados: list[str] de los 6 prohibidos que aparecieron
+      - hospitales_desconocidos: list[str] que no están en regla 1 ni en regla 1b
+      - productos_cambio_lote: list[str] productos movidos de Lote 1 a Lote 5
+      - fecha: str de la fecha extraída
 
     Si el archivo no tiene hoja BD o el formato no coincide, devuelve None.
     `original_filename` se usa para extraer la fecha del nombre real del archivo
@@ -173,6 +217,10 @@ def procesar_pedido(input_excel: Path, output_dir: Path,
     mask_excluido = df_raw["UNIDAD"].apply(_is_excluido)
     df_incluido = df_raw[~mask_excluido].copy()
     hospitales_si = sorted(df_incluido["UNIDAD"].unique())
+    hospitales_excluidos_detectados = sorted(df_raw[mask_excluido]["UNIDAD"].unique())
+
+    # Hospitales no listados en la regla 1b — el operador debe confirmar
+    hospitales_desconocidos = sorted([h for h in hospitales_si if _hospital_canonico(h) is None])
 
     df_l5 = df_incluido[df_incluido["LOTE"].str.upper().str.contains("5 FRUTAS", na=False)].copy()
     df_lote1 = df_incluido[df_incluido["LOTE"].str.strip().str.upper().str.startswith("1 ABARROTES")].copy()
@@ -236,6 +284,20 @@ def procesar_pedido(input_excel: Path, output_dir: Path,
     ws_rel.column_dimensions["A"].width = 60
     ws_rel.column_dimensions["B"].width = 20
 
+    # Hoja 4b: hospitales desconocidos (REVISAR — no están en el catálogo conocido)
+    ws_desc = wb.create_sheet("hospitales desconocidos")
+    if hospitales_desconocidos:
+        _set_row(ws_desc, 1, ["⚠️ Estos hospitales NO están en tu catálogo. Confirma si los surtes."],
+                 bold=True, bg=AZUL_OSC, font_color="FFFFFF")
+        _set_row(ws_desc, 3, ["Hospital detectado", "Acción requerida"], bold=True, bg=AZUL_CLAR)
+        for i, h in enumerate(hospitales_desconocidos, 4):
+            _set_row(ws_desc, i, [h, "REVISAR"])
+    else:
+        _set_row(ws_desc, 1, ["✓ Todos los hospitales del pedido están en tu catálogo."],
+                 bold=True, bg="00B050", font_color="FFFFFF")
+    ws_desc.column_dimensions["A"].width = 70
+    ws_desc.column_dimensions["B"].width = 20
+
     # Hoja 5: lista de compras
     ws_lista = wb.create_sheet("lista de compras")
     ws_lista.cell(row=1, column=1, value="LOTE").font = _font(bold=True)
@@ -287,8 +349,17 @@ def procesar_pedido(input_excel: Path, output_dir: Path,
 
     wb.save(output_path)
     log.info(f"Excel procesado guardado: {output_path}")
+    if hospitales_desconocidos:
+        log.warning(f"Hospitales desconocidos en el pedido: {hospitales_desconocidos}")
 
-    return output_path
+    return {
+        "output_path": output_path,
+        "hospitales_si": hospitales_si,
+        "hospitales_excluidos_detectados": hospitales_excluidos_detectados,
+        "hospitales_desconocidos": hospitales_desconocidos,
+        "productos_cambio_lote": productos_cambio_nombres,
+        "fecha": fecha_str,
+    }
 
 
 def extraer_fecha(filename: str) -> str:

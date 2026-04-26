@@ -27,10 +27,12 @@ ENV/
 # Storage local
 storage/inbox/*
 storage/conversations/*
+storage/processed/*
 storage/message_log.jsonl
 storage/raw_webhooks/
 !storage/inbox/.gitkeep
 !storage/conversations/.gitkeep
+!storage/processed/.gitkeep
 
 # IDEs
 .vscode/*

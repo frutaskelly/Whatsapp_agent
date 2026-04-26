@@ -137,6 +137,8 @@ def handle_text(msg: dict, from_number: str):
         reply = "Tuve un problema técnico, ¿puedes repetir tu mensaje?"
 
     wa.send_text(from_number, reply)
+    # Para texto puro no hay archivo que procesar; el procesamiento se dispara
+    # cuando llega un Excel en handle_document.
 
 
 def handle_media(msg: dict, from_number: str, kind: str, ext: str):
@@ -188,12 +190,32 @@ def handle_document(msg: dict, from_number: str):
     save_path = config.INBOX_DIR / filename
 
     result = wa.download_media(media_id, save_path)
-    if result:
-        drive_upload(save_path, original_name=filename_orig)
-        wa.send_text(from_number, f"✓ Recibí tu {kind_label}: {filename_orig}. Procesando...")
-        # TODO: si es Excel, disparar el procesamiento de pedidos
-    else:
+    if not result:
         wa.send_text(from_number, f"⚠️ No pude descargar tu {kind_label}. Intenta de nuevo.")
+        return
+
+    drive_upload(save_path, original_name=filename_orig)
+    wa.send_text(from_number, f"✓ Recibí tu {kind_label}: {filename_orig}. Lo estoy revisando...")
+
+    # Mandar a Claude para que decida si procesar
+    try:
+        ai_result = ai_chat(from_number, f"[Adjunto recibido: {filename_orig}]",
+                            attachment_path=save_path)
+        ai_reply = ai_result.get("respuesta_para_ehmo")
+        if ai_reply:
+            wa.send_text(from_number, ai_reply)
+    except Exception as e:
+        log.exception(f"Error con Claude en handle_document: {e}")
+        return
+
+    # Si Claude dice "procesar_archivo", dispara el pipeline
+    from .processing_runner import maybe_process
+    processed = maybe_process(from_number, save_path, ai_result, original_filename=filename_orig)
+    if processed and processed.get("drive"):
+        wa.send_text(from_number,
+                     f"📊 Pedido procesado y disponible en Drive:\n{processed['drive']['link']}")
+    elif processed and processed.get("error"):
+        wa.send_text(from_number, f"⚠️ {processed['error']}")
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────

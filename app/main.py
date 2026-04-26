@@ -118,11 +118,19 @@ def create_app():
             "out", phone, "text", reply,
             {"simulated": True, "intencion": result.get("intencion"), "accion": result.get("accion")},
         )
+
+        # Si Claude pidió procesar el archivo, dispara el pipeline (genera el
+        # Excel de salida + sube a Drive + manda mensaje de seguimiento)
+        from .processing_runner import maybe_process
+        processed = maybe_process(phone, attachment_path, result,
+                                   original_filename=original_name)
+
         return jsonify({
             "reply": reply,
             "intencion": result.get("intencion"),
             "accion": result.get("accion"),
             "datos": result.get("datos"),
+            "processed": processed,
         })
 
     @app.route("/health")

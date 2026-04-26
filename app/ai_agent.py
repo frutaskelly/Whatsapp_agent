@@ -148,29 +148,24 @@ def interpret_message(text: str | None = None, attachment_path: Path | None = No
     try:
         resp = client.messages.create(
             model=config.CLAUDE_MODEL,
-            max_tokens=2048,
+            max_tokens=4096,
             system=SYSTEM_PROMPT,
             messages=messages,
         )
         raw = resp.content[0].text
-        log.info(f"Claude respondió: {raw[:300]}")
+        log.info(f"Claude respondió ({len(raw)} chars, stop={resp.stop_reason})")
 
-        # Intentar parsear JSON
-        try:
-            # Si la respuesta tiene markdown, extraer el JSON
-            if "```json" in raw:
-                raw = raw.split("```json")[1].split("```")[0].strip()
-            elif "```" in raw:
-                raw = raw.split("```")[1].split("```")[0].strip()
-            return json.loads(raw)
-        except json.JSONDecodeError:
-            log.warning(f"Claude no devolvió JSON parseable, devuelvo raw")
-            return {
-                "intencion": "otro",
-                "respuesta_para_ehmo": raw,
-                "accion": "nada",
-                "datos": {}
-            }
+        parsed = _parse_json_response(raw)
+        if parsed:
+            return parsed
+
+        log.warning("Claude no devolvió JSON parseable; uso raw como respuesta")
+        return {
+            "intencion": "otro",
+            "respuesta_para_ehmo": raw,
+            "accion": "nada",
+            "datos": {},
+        }
     except Exception as e:
         log.exception(f"Error llamando a Claude: {e}")
         # En dev mostramos el error real para depurar; en prod un mensaje amigable.
@@ -230,6 +225,43 @@ def chat(phone: str, text: str, attachment_path: Path | None = None) -> dict:
     history.append({"role": "assistant", "content": reply})
     save_conversation(phone, history)
     return result
+
+
+# ─── Parsing del JSON de respuesta ────────────────────────────────────────────
+def _parse_json_response(raw: str) -> dict | None:
+    """Intenta parsear el JSON que devuelve Claude, con varias estrategias."""
+    candidates = []
+
+    # 1. Si viene en markdown fence con etiqueta json
+    if "```json" in raw:
+        try:
+            candidates.append(raw.split("```json", 1)[1].split("```", 1)[0].strip())
+        except IndexError:
+            pass
+    # 2. Markdown fence sin etiqueta
+    elif "```" in raw:
+        try:
+            candidates.append(raw.split("```", 1)[1].split("```", 1)[0].strip())
+        except IndexError:
+            pass
+
+    # 3. Texto crudo
+    candidates.append(raw.strip())
+
+    # 4. Recorte heurístico desde primer '{' hasta último '}'
+    first = raw.find("{")
+    last = raw.rfind("}")
+    if first >= 0 and last > first:
+        candidates.append(raw[first:last + 1])
+
+    for cand in candidates:
+        try:
+            obj = json.loads(cand)
+            if isinstance(obj, dict):
+                return obj
+        except json.JSONDecodeError:
+            continue
+    return None
 
 
 # ─── Helpers de adjuntos ──────────────────────────────────────────────────────

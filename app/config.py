@@ -34,8 +34,10 @@ EHMO_PHONE = os.getenv("EHMO_PHONE", "")  # Whitelist - solo procesa de este nú
 # === Storage ===
 INBOX_DIR = BASE_DIR / os.getenv("INBOX_DIR", "storage/inbox")
 CONVERSATIONS_DIR = BASE_DIR / os.getenv("CONVERSATIONS_DIR", "storage/conversations")
+PROCESSED_DIR = BASE_DIR / os.getenv("PROCESSED_DIR", "storage/processed")
 INBOX_DIR.mkdir(parents=True, exist_ok=True)
 CONVERSATIONS_DIR.mkdir(parents=True, exist_ok=True)
+PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
 # === Google Drive (OAuth user credentials) ===
 GOOGLE_DRIVE_FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID", "")

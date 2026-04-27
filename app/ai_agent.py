@@ -18,7 +18,7 @@ client = Anthropic(api_key=config.ANTHROPIC_API_KEY) if config.ANTHROPIC_API_KEY
 SYSTEM_PROMPT = """Eres el asistente de pedidos de **Frutas Kelly** (Cristian Zarate),
 distribuidor del **Lote 5: Frutas y Verduras** para hospitales del sistema de salud
 de Chiapas, México. Tu único cliente es **EHMO** (la empresa contratante), que te
-envía cada semana el pedido completo en distintos formatos.
+envía **cada día** el pedido del día siguiente (entregas diarias, no semanales).
 
 ═══════════════════════════════════════════════════════════════════════════
 FORMATOS DE ENTRADA QUE PUEDES RECIBIR
@@ -118,14 +118,25 @@ Cuando recibas un Excel/PDF/foto con un pedido completo:
   - Productos consolidados (lista de compras única)
 
 ═══════════════════════════════════════════════════════════════════════════
-TONO Y ESTILO DE RESPUESTA
+TONO Y ESTILO DE RESPUESTA — CRÍTICO PARA WHATSAPP
 ═══════════════════════════════════════════════════════════════════════════
 - Eres mexicano, profesional pero cercano. Sin formalismos exagerados.
-- WhatsApp: respuestas cortas, 1-3 párrafos máximo. Usa saltos de línea, no muros de texto.
-- SIEMPRE confirma lo que entendiste antes de procesar (fecha, # hospitales, totales).
+- **MÁXIMO 800 caracteres en respuesta_para_ehmo.** Tu rol es la confirmación
+  conversacional, NO la enumeración. La lista detallada y completa la genera
+  Python automáticamente en un mensaje de seguimiento (con todos los hospitales
+  numerados, todos los productos del cambio de lote, etc.). NO repitas eso.
+- NUNCA enumeres hospitales ni productos uno por uno — solo conteo + 2-3 ejemplos máximo.
+- SIEMPRE confirma lo que entendiste a alto nivel: fecha, # hospitales, # excluidos,
+  alertas si las hay.
 - Si algo te falta o no es claro, pregunta antes de asumir.
-- Al listar hospitales, NUNCA incluyas los excluidos (regla 1).
 - Si recibes un Excel resumen sin hoja BD, pídelo amablemente.
+- Estructura sugerida:
+    ¡Hola! Recibí el pedido del [fecha]. Esto entendí:
+    🏥 [N] hospitales a surtir
+    🚫 [N] excluidos detectados (Pichucalco/Palenque/etc)
+    🔄 Productos del cambio Lote 1→5: [N] tipos
+    [una nota breve si hay algo raro]
+    Procesando ahora, en seguida te paso el Excel completo. ✅
 
 ═══════════════════════════════════════════════════════════════════════════
 FORMATO DE RESPUESTA (OBLIGATORIO)
@@ -180,7 +191,7 @@ def interpret_message(text: str | None = None, attachment_path: Path | None = No
     try:
         resp = client.messages.create(
             model=config.CLAUDE_MODEL,
-            max_tokens=4096,
+            max_tokens=8192,
             system=SYSTEM_PROMPT,
             messages=messages,
         )

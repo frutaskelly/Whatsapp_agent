@@ -22,7 +22,7 @@ def log_message(direction: str, phone: str, msg_type: str, body: str = "", meta:
         "direction": direction,
         "phone": phone or "",
         "type": msg_type,
-        "body": (body or "")[:1000],
+        "body": (body or "")[:10000],
         "meta": meta or {},
     }
     with _lock:

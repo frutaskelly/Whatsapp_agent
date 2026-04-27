@@ -241,6 +241,10 @@ def procesar_pedido(input_excel: Path, output_dir: Path,
     df_fyv = pd.concat([df_l5, df_cambio], ignore_index=True)
     df_fyv = df_fyv[df_fyv["CANTIDAD"] > 0]
 
+    # Hospitales surtibles que NO tienen FyV en este pedido (solo otros lotes)
+    hospitales_con_fyv = sorted(df_fyv["UNIDAD"].unique())
+    hospitales_si_sin_pedido_fyv = sorted([h for h in hospitales_si if h not in hospitales_con_fyv])
+
     # ─── Crear Excel de salida ───────────────────────────────────────────────
     output_path = output_dir / f"Pedido {fecha_str} Frutas y verduras.xlsx"
     wb = openpyxl.Workbook()
@@ -274,14 +278,32 @@ def procesar_pedido(input_excel: Path, output_dir: Path,
     ws_bdcorr.column_dimensions["D"].width = 60
     ws_bdcorr.column_dimensions["F"].width = 18
 
-    # Hoja 4: relación unidades
+    # Hoja 4: relación unidades — 3 estados:
+    #   "si"          → tiene pedido FyV hoy, se surte
+    #   "no"          → excluido permanente (Pichucalco, Palenque, etc.)
+    #   "sin pedido"  → cliente válido pero hoy no pidió FyV (solo otros lotes)
     ws_rel = wb.create_sheet("relacion de unidades a surtir")
+    _set_row(ws_rel, 1, ["Leyenda: si = surtir hoy · no = excluido permanente · sin pedido = cliente sin FyV hoy"],
+             bold=True, bg=AZUL_OSC, font_color="FFFFFF")
     _set_row(ws_rel, 3, ["Etiquetas de fila", "unidades a surtir"], bold=True, bg=AZUL_CLAR)
+
+    contadores = {"si": 0, "no": 0, "sin pedido": 0}
     for i, h in enumerate(sorted(todos_hospitales), 4):
-        val = "si" if h in hospitales_si else "no"
+        if h in hospitales_con_fyv:
+            val = "si"
+        elif _is_excluido(h):
+            val = "no"
+        else:
+            val = "sin pedido"
+        contadores[val] += 1
         _set_row(ws_rel, i, [h, val])
-    _set_row(ws_rel, len(todos_hospitales) + 4, ["Total general", len(todos_hospitales)], bold=True)
-    ws_rel.column_dimensions["A"].width = 60
+
+    last_row = len(todos_hospitales) + 4
+    _set_row(ws_rel, last_row, ["Total general", len(todos_hospitales)], bold=True)
+    _set_row(ws_rel, last_row + 1, [f"  · si (surtir hoy)", contadores["si"]])
+    _set_row(ws_rel, last_row + 2, [f"  · no (excluido)", contadores["no"]])
+    _set_row(ws_rel, last_row + 3, [f"  · sin pedido FyV hoy", contadores["sin pedido"]])
+    ws_rel.column_dimensions["A"].width = 75
     ws_rel.column_dimensions["B"].width = 20
 
     # Hoja 4b: hospitales desconocidos (REVISAR — no están en el catálogo conocido)
@@ -355,6 +377,8 @@ def procesar_pedido(input_excel: Path, output_dir: Path,
     return {
         "output_path": output_path,
         "hospitales_si": hospitales_si,
+        "hospitales_con_fyv": hospitales_con_fyv,
+        "hospitales_si_sin_pedido_fyv": hospitales_si_sin_pedido_fyv,
         "hospitales_excluidos_detectados": hospitales_excluidos_detectados,
         "hospitales_desconocidos": hospitales_desconocidos,
         "productos_cambio_lote": productos_cambio_nombres,

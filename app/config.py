@@ -39,6 +39,10 @@ INBOX_DIR.mkdir(parents=True, exist_ok=True)
 CONVERSATIONS_DIR.mkdir(parents=True, exist_ok=True)
 PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
+# Lista de precios EHMO (para generar notas de remisión)
+_precios_env = os.getenv("LISTA_PRECIOS_PATH", "../Lista_Precios_EHMO.xlsx")
+LISTA_PRECIOS_PATH = _precios_env if os.path.isabs(_precios_env) else str(BASE_DIR / _precios_env)
+
 # === Google Drive (OAuth user credentials) ===
 GOOGLE_DRIVE_FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID", "")
 

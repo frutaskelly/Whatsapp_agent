@@ -14,12 +14,15 @@ Basado en el script de CONTEXTO_SISTEMA_PEDIDOS.md.
 """
 import logging
 import re
+import time
 from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
+
+from .event_log import log_event
 
 log = logging.getLogger(__name__)
 
@@ -35,14 +38,23 @@ CAMBIO_KW = [
     "canela en raja",
     "chile seco ancho", "chile seco guajillo", "chile seco pasilla",
     "epazote", "flor de jamaica",
+    "nuez sin cascara", "nuez sin cáscara",  # cambio confirmado por Cristian 2026-04-27
     "orégano en hoja", "oregano en hoja",
     "perejil",
     "te de limón zacate", "te de limon zacate", "té de limón zacate",
     "te de manzanilla", "té de manzanilla",
     "te de yerbabuena", "té de yerbabuena",
+    # Cambio Lote 1 → 5 confirmados por Cristian (2026-04-27, día 28)
+    "palanqueta de cacahuate",
+    "mermelada de fresa",
+    "polvo para hornear",
 ]
 
-IGNORAR_KW = ["almendra tostada", "palanqueta de cacahuate"]
+IGNORAR_KW = [
+    "almendra tostada",
+    "salchicha",  # Lote 4 embutidos — no es nuestro (2026-04-27)
+    # nota: "palanqueta de cacahuate" se movió a CAMBIO_KW (2026-04-27)
+]
 
 # Catálogo de hospitales conocidos que SÍ surtimos. Mapea nombre canónico → lista
 # de fingerprints (substrings case-insensitive) que identifican el hospital aunque
@@ -50,6 +62,7 @@ IGNORAR_KW = ["almendra tostada", "palanqueta de cacahuate"]
 HOSPITALES_CONOCIDOS_SI = {
     "Hospital Básico Comunitario 12 Camas Berriozabal": ["berriozabal"],
     "Hospital Básico Comunitario Chiapa de Corzo": ["chiapa de corzo"],
+    "Hospital Básico Comunitario de Cintalapa de Figueroa": ["cintalapa"],
     "Hospital Básico Comunitario Las Margaritas": ["margaritas"],
     "Hospital Básico Comunitario Manuel Velasco Suarez Acala": ["manuel velasco", "velasco suarez", "velasco suárez"],
     "Hospital Básico Comunitario Ángel Albino Corzo": ["ángel albino", "angel albino"],
@@ -73,6 +86,7 @@ HOSPITALES_CONOCIDOS_SI = {
 NOMBRES_CORTOS = {
     "Hospital Básico Comunitario Ángel Albino Corzo": "Angel Albino Corzo",
     "Hospital Básico Comunitario Chiapa de Corzo": "Chiapa de Corzo",
+    "Hospital Básico Comunitario de Cintalapa de Figueroa": "Cintalapa de Figueroa",
     "Hospital Básico Comunitario Las Margaritas": "Las Margaritas",
     "Hospital Básico Comunitario Manuel Velasco Suarez Acala": "Manuel Velasco Suarez Acala",
     "Hospital Chiapas nos une Dr. Jesús Gilberto Gomez Maza": "Jesús Gilberto Gomez Maza",
@@ -110,6 +124,13 @@ def _hospital_canonico(nombre: str) -> str | None:
         if any(fp in n for fp in fingerprints):
             return canonical
     return None
+
+
+def _is_ignorar(alimento) -> bool:
+    """True si el producto debe ser excluido del FyV aunque venga marcado como
+    Lote 5 en el BD (ej. salchicha mal clasificada — pertenece a Lote 4 embutidos)."""
+    a = str(alimento).lower()
+    return any(kw in a for kw in IGNORAR_KW)
 
 
 def _is_cambio(alimento):
@@ -156,12 +177,93 @@ def _set_row(ws, row_idx, values, bold=False, bg=None, font_color="000000"):
             c.fill = _fill(bg)
 
 
-def _extraer_fecha(filename: str) -> str:
-    """Extrae la fecha del nombre del archivo. Ej: 'Pedido 27 de abril original.xlsx' -> '27 de abril'."""
-    m = re.search(r"Pedido (.+?)(?:\s+original)?\s*\.xlsx", filename, re.I)
+def _extraer_fecha(filename: str, excel_path=None) -> str:
+    """Extrae la fecha del archivo. Estrategia en orden de prioridad:
+
+    1. Lee la celda A3 del Excel ("Suma de 28-abr" → "28 de abril").
+       Es la fuente más confiable porque viene del cliente original.
+    2. Match por nombre de archivo: 'Pedido 27 de abril original.xlsx' o
+       'Pedido_general_28_de_abril.xlsx' (acepta espacios o underscores).
+    3. Fallback: fecha de hoy.
+    """
+    # Estrategia 1: leer del contenido del Excel
+    if excel_path:
+        try:
+            import openpyxl
+            wb = openpyxl.load_workbook(excel_path, read_only=True, data_only=True)
+            for sheet in wb.sheetnames:
+                ws = wb[sheet]
+                # Buscar "Suma de XX-mes" en las primeras 5 filas
+                for r in range(1, 6):
+                    for c in range(1, 5):
+                        val = ws.cell(row=r, column=c).value
+                        if not val or not isinstance(val, str):
+                            continue
+                        m = re.search(r"(\d{1,2})[\s\-/](\w{3,})", val.lower())
+                        if m and "suma" in val.lower():
+                            dia = m.group(1)
+                            mes_kw = m.group(2)
+                            # Mapear abr→abril, etc.
+                            for nombre_largo in ["enero", "febrero", "marzo", "abril",
+                                                  "mayo", "junio", "julio", "agosto",
+                                                  "septiembre", "octubre", "noviembre",
+                                                  "diciembre"]:
+                                if nombre_largo.startswith(mes_kw[:3]):
+                                    wb.close()
+                                    return f"{dia} de {nombre_largo}"
+            wb.close()
+        except Exception:
+            pass  # Caer a estrategia 2
+
+    # Estrategia 2: nombre de archivo (espacios o underscores)
+    # Normalizar separadores: '_' → ' '
+    fname_norm = filename.replace("_", " ")
+    m = re.search(r"Pedido\s+(.+?)(?:\s+original)?\s*\.xlsx", fname_norm, re.I)
     if m:
-        return m.group(1).strip()
+        # Limpiar palabras parásitas tipo "general", "genral" (typo)
+        captured = m.group(1).strip()
+        captured = re.sub(r"\b(general|genral)\b\s*", "", captured, flags=re.I).strip()
+        return captured
+
+    # Estrategia 3: hoy
     return datetime.now().strftime("%d de %B")
+
+
+_MESES_NUMERO = {
+    "enero": 1, "febrero": 2, "marzo": 3, "abril": 4,
+    "mayo": 5, "junio": 6, "julio": 7, "agosto": 8,
+    "septiembre": 9, "octubre": 10, "noviembre": 11, "diciembre": 12,
+}
+
+
+def fecha_a_iso(fecha_str: str | None, year: int | None = None) -> str | None:
+    """Convierte '27 de abril' a '2026-04-27' (usa año actual si no se da uno).
+
+    Devuelve None si no puede parsear. Útil para nombrar subcarpetas en Drive
+    de forma sortable.
+    """
+    if not fecha_str:
+        return None
+    parts = fecha_str.lower().split()
+    dia = None
+    mes = None
+    yr = year
+    for p in parts:
+        if dia is None:
+            try:
+                dia = int(p)
+                continue
+            except ValueError:
+                pass
+        if p in _MESES_NUMERO:
+            mes = _MESES_NUMERO[p]
+            continue
+        if yr is None and p.isdigit() and len(p) == 4:
+            yr = int(p)
+    if dia is None or mes is None:
+        return None
+    yr = yr or datetime.now().year
+    return f"{yr:04d}-{mes:02d}-{dia:02d}"
 
 
 def procesar_pedido(input_excel: Path, output_dir: Path,
@@ -184,14 +286,19 @@ def procesar_pedido(input_excel: Path, output_dir: Path,
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    log_event("processor", f"⚙️ Procesando {input_excel.name}")
+    t0 = time.time()
+
     # ─── Leer y validar BD ───────────────────────────────────────────────────
     try:
         df_raw = pd.read_excel(input_excel, sheet_name="BD", header=0)
     except ValueError as e:
         log.warning(f"Excel no tiene hoja 'BD': {input_excel.name} ({e})")
+        log_event("processor", f"⚠️ Sin hoja BD en {input_excel.name}", level="warn")
         return None
     except Exception as e:
         log.exception(f"Error leyendo Excel {input_excel.name}: {e}")
+        log_event("processor", f"❌ Error leyendo Excel: {e}", level="error")
         return None
 
     if df_raw.shape[1] < 6:
@@ -206,7 +313,8 @@ def procesar_pedido(input_excel: Path, output_dir: Path,
     df_raw["ALIMENTO"] = df_raw["ALIMENTO"].astype(str).str.strip()
 
     # ─── Fecha ───────────────────────────────────────────────────────────────
-    fecha_str = _extraer_fecha(original_filename or input_excel.name)
+    fecha_str = _extraer_fecha(original_filename or input_excel.name,
+                                excel_path=input_excel)
     parts = fecha_str.lower().split()
     dia = parts[0] if parts else "fecha"
     mes_corto = MESES.get(parts[-1], parts[-1][:3]) if parts else "fec"
@@ -223,6 +331,18 @@ def procesar_pedido(input_excel: Path, output_dir: Path,
     hospitales_desconocidos = sorted([h for h in hospitales_si if _hospital_canonico(h) is None])
 
     df_l5 = df_incluido[df_incluido["LOTE"].str.upper().str.contains("5 FRUTAS", na=False)].copy()
+
+    # Filtrar productos mal clasificados como Lote 5 (ej. salchicha que debería
+    # estar en Lote 4 EMBUTIDOS pero el BD del cliente a veces la pone en Lote 5).
+    # IGNORAR_KW define la lista de productos que nunca debemos surtir como FyV.
+    mal_clasificados = df_l5[df_l5["ALIMENTO"].apply(_is_ignorar)]
+    if not mal_clasificados.empty:
+        log_event("processor",
+                  f"⚠️ {len(mal_clasificados)} producto(s) Lote 5 ignorado(s) — pertenecen a otro lote",
+                  {"productos": mal_clasificados[["UNIDAD", "ALIMENTO", "CANTIDAD"]].to_dict("records")},
+                  level="warn")
+        df_l5 = df_l5[~df_l5["ALIMENTO"].apply(_is_ignorar)]
+
     df_lote1 = df_incluido[df_incluido["LOTE"].str.strip().str.upper().str.startswith("1 ABARROTES")].copy()
     df_cambio = df_lote1[df_lote1["ALIMENTO"].apply(_is_cambio)].copy()
     productos_cambio_nombres = sorted(df_cambio["ALIMENTO"].unique())
@@ -239,7 +359,22 @@ def procesar_pedido(input_excel: Path, output_dir: Path,
     df_bd_corr["LOTE"] = df_bd_corr.apply(corregir_lote, axis=1)
 
     df_fyv = pd.concat([df_l5, df_cambio], ignore_index=True)
-    df_fyv = df_fyv[df_fyv["CANTIDAD"] > 0]
+    # Filtros defensivos: solo cobramos lo que se surte. Descartamos:
+    # - cantidades NaN o no-numéricas (ya convertidas a 0 por to_numeric arriba)
+    # - cantidades 0 (líneas placeholder sin pedido real)
+    # - cantidades negativas (cancelaciones)
+    df_fyv = df_fyv[df_fyv["CANTIDAD"].notna() & (df_fyv["CANTIDAD"] > 0)]
+
+    # Detectar y loguear cantidades sospechosas en el BD original (auditoría)
+    sospechosos = df_raw[
+        (df_raw["LOTE"].str.upper().str.contains("5 FRUTAS", na=False))
+        & (df_raw["CANTIDAD"] <= 0)
+    ]
+    if not sospechosos.empty:
+        log_event("processor",
+                  f"⚠️ {len(sospechosos)} fila(s) Lote 5 con cantidad ≤ 0 (omitidas)",
+                  {"ejemplos": sospechosos[["UNIDAD", "ALIMENTO", "CANTIDAD"]].head(3).to_dict("records")},
+                  level="warn")
 
     # Hospitales surtibles que NO tienen FyV en este pedido (solo otros lotes)
     hospitales_con_fyv = sorted(df_fyv["UNIDAD"].unique())
@@ -370,12 +505,96 @@ def procesar_pedido(input_excel: Path, output_dir: Path,
         ws_h.column_dimensions["B"].width = 20
 
     wb.save(output_path)
+    excel_elapsed = round((time.time() - t0) * 1000)
     log.info(f"Excel procesado guardado: {output_path}")
+
+    # ─── PDF para imprimir (una hoja por hospital) ───────────────────────────
+    from .pedido_pdf import generar_pdf_pedido
+    pdf_path = output_dir / f"Pedido {fecha_str} Frutas y verduras.pdf"
+    try:
+        generar_pdf_pedido(df_fyv, fecha_str, pdf_path)
+    except Exception as e:
+        log.exception(f"Error generando PDF: {e}")
+        log_event("processor", f"⚠️ PDF falló: {e}", level="warn")
+        pdf_path = None
+
+    # ─── Lista de compras consolidada (PDF imprimible + Excel editable) ──────
+    from .lista_compras_pdf import generar_lista_compras_pdf, generar_lista_compras_xlsx
+    lista_compras_path = output_dir / f"Lista de Compras {fecha_str}.pdf"
+    lista_compras_xlsx_path = output_dir / f"Lista de Compras {fecha_str}.xlsx"
+    try:
+        generar_lista_compras_pdf(df_fyv, fecha_str, lista_compras_path)
+    except Exception as e:
+        log.exception(f"Error generando lista de compras PDF: {e}")
+        log_event("processor", f"⚠️ Lista de compras PDF falló: {e}", level="warn")
+        lista_compras_path = None
+    try:
+        generar_lista_compras_xlsx(df_fyv, fecha_str, lista_compras_xlsx_path)
+    except Exception as e:
+        log.exception(f"Error generando lista de compras Excel: {e}")
+        log_event("processor", f"⚠️ Lista de compras Excel falló: {e}", level="warn")
+        lista_compras_xlsx_path = None
+
+    # ─── Notas de remisión con precios (una por hospital) ────────────────────
+    from .nota_remision import generar_notas_remision
+    notas_path = output_dir / f"Notas Remisión {fecha_str} Frutas y verduras.pdf"
+    notas_info = None
+    try:
+        notas_info = generar_notas_remision(df_fyv, fecha_str, notas_path)
+    except Exception as e:
+        log.exception(f"Error generando notas de remisión: {e}")
+        log_event("processor", f"⚠️ Notas remisión fallaron: {e}", level="warn")
+        notas_path = None
+
+    # ─── Persistir estado del día (para ajustes posteriores) ─────────────────
+    from .estado_pedido import guardar_estado
+    fecha_iso_calc = fecha_a_iso(fecha_str)
+    if fecha_iso_calc:
+        try:
+            folios_iniciales = (notas_info or {}).get("folios", {})
+            guardar_estado(fecha_iso_calc, fecha_str, df_fyv, folios=folios_iniciales)
+        except Exception as e:
+            log.exception(f"Error guardando estado del día: {e}")
+
+    # ─── Relación de documentos del día (Excel + PDF horizontal) ────────────
+    relacion_path = None
+    relacion_pdf_path = None
+    if fecha_iso_calc:
+        try:
+            from .relacion_documentos import generar_relacion_dia, generar_relacion_dia_pdf
+            rel = generar_relacion_dia(fecha_iso_calc, fecha_legible=fecha_str)
+            if rel and not rel.get("error"):
+                relacion_path = rel["output_path"]
+            rel_pdf = generar_relacion_dia_pdf(fecha_iso_calc, fecha_legible=fecha_str)
+            if rel_pdf and not rel_pdf.get("error"):
+                relacion_pdf_path = rel_pdf["output_path"]
+        except Exception as e:
+            log.exception(f"Error generando relación del día: {e}")
+            log_event("processor", f"⚠️ Relación del día falló: {e}", level="warn")
+
+    elapsed = round((time.time() - t0) * 1000)
+    log_event("processor", f"✓ Excel generado ({len(wb.sheetnames)} hojas) en {excel_elapsed}ms",
+              {"output": output_path.name, "sheets": len(wb.sheetnames),
+               "hospitales_si": len(hospitales_si),
+               "con_fyv": len(hospitales_con_fyv),
+               "sin_fyv": len(hospitales_si_sin_pedido_fyv),
+               "excluidos": len(hospitales_excluidos_detectados),
+               "desconocidos": len(hospitales_desconocidos)})
     if hospitales_desconocidos:
         log.warning(f"Hospitales desconocidos en el pedido: {hospitales_desconocidos}")
+        log_event("processor", f"⚠️ {len(hospitales_desconocidos)} hospital(es) desconocido(s)",
+                  {"hospitales": hospitales_desconocidos}, level="warn")
 
     return {
         "output_path": output_path,
+        "pdf_path": pdf_path,
+        "lista_compras_path": lista_compras_path,
+        "lista_compras_xlsx_path": lista_compras_xlsx_path,
+        "notas_path": notas_path,
+        "relacion_path": relacion_path,
+        "relacion_pdf_path": relacion_pdf_path,
+        "notas_total_general": notas_info["total_general"] if notas_info else None,
+        "notas_sin_precio": notas_info["sin_precio_count"] if notas_info else 0,
         "hospitales_si": hospitales_si,
         "hospitales_con_fyv": hospitales_con_fyv,
         "hospitales_si_sin_pedido_fyv": hospitales_si_sin_pedido_fyv,

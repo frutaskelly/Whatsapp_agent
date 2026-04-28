@@ -29,6 +29,10 @@ storage/inbox/*
 storage/conversations/*
 storage/processed/*
 storage/message_log.jsonl
+storage/event_log.jsonl
+storage/folio_counter.json
+storage/pedidos_dia/
+storage/extras_dia/
 storage/raw_webhooks/
 !storage/inbox/.gitkeep
 !storage/conversations/.gitkeep
@@ -54,3 +58,6 @@ logs/
 dist/
 build/
 *.egg-info/
+
+# Backups locales (snapshots de operación)
+backups/

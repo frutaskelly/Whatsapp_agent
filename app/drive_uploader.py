@@ -18,9 +18,11 @@ Variables de entorno:
 """
 import logging
 import mimetypes
+import time
 from datetime import datetime
 from pathlib import Path
 from . import config
+from .event_log import log_event
 
 log = logging.getLogger(__name__)
 
@@ -28,6 +30,7 @@ SCOPES = ["https://www.googleapis.com/auth/drive.file"]
 
 _service = None
 _init_attempted = False
+_folder_cache: dict[tuple[str, str], str] = {}  # (parent_id, name) -> folder_id
 
 
 def _load_credentials():
@@ -84,6 +87,48 @@ def _get_service():
         return None
 
 
+def _get_or_create_folder(name: str, parent_id: str, service) -> str:
+    """Busca una subcarpeta por nombre dentro de parent_id; la crea si no existe.
+
+    Cachea el resultado para no consultar la API en cada upload.
+    Devuelve el ID de la carpeta.
+    """
+    cache_key = (parent_id, name)
+    if cache_key in _folder_cache:
+        return _folder_cache[cache_key]
+
+    safe_name = name.replace("'", "\\'")
+    query = (
+        f"name = '{safe_name}' "
+        f"and mimeType = 'application/vnd.google-apps.folder' "
+        f"and '{parent_id}' in parents and trashed = false"
+    )
+    try:
+        results = service.files().list(q=query, fields="files(id,name)", pageSize=5).execute()
+        files = results.get("files", [])
+        if files:
+            folder_id = files[0]["id"]
+            _folder_cache[cache_key] = folder_id
+            return folder_id
+
+        # Crear nueva
+        metadata = {
+            "name": name,
+            "mimeType": "application/vnd.google-apps.folder",
+            "parents": [parent_id],
+        }
+        f = service.files().create(body=metadata, fields="id,name").execute()
+        _folder_cache[cache_key] = f["id"]
+        log.info(f"Drive: subcarpeta creada '{name}' (id={f['id']})")
+        log_event("drive", f"📁 Subcarpeta creada: {name}", {"id": f["id"]})
+        return f["id"]
+    except Exception as e:
+        log.exception(f"Drive: error con subcarpeta '{name}': {e}")
+        log_event("drive", f"❌ Error con subcarpeta '{name}'", {"error": str(e)[:200]}, level="error")
+        # Fallback al parent original
+        return parent_id
+
+
 def _build_drive_name(original_name: str) -> str:
     """Prepende timestamp al nombre del archivo para evitar duplicados en Drive.
 
@@ -95,40 +140,114 @@ def _build_drive_name(original_name: str) -> str:
     return f"{ts}_{p.stem}{p.suffix}"
 
 
-def upload_file(local_path: Path, original_name: str | None = None) -> dict | None:
-    """Sube un archivo a la carpeta configurada con timestamp prefijo.
+def upload_file(local_path: Path, original_name: str | None = None,
+                subfolder: str | None = None) -> dict | None:
+    """Sube un archivo a la carpeta de Drive (con subcarpeta opcional por día).
 
-    El timestamp evita colisiones cuando llegan dos archivos con el mismo
-    nombre (típicamente cuando EHMO reenvía un pedido corregido).
+    Si `subfolder` se proporciona, el archivo va a una subcarpeta de ese nombre
+    dentro de GOOGLE_DRIVE_FOLDER_ID. La subcarpeta se crea automáticamente si
+    no existe; si ya existe se reutiliza.
+
+    Si la carpeta destino fue borrada (404), invalida la caché y reintenta
+    una vez (creando la carpeta de nuevo).
+
     Devuelve {id, name, link} o None.
     """
     service = _get_service()
     if not service:
+        log_event("drive", "Upload omitido (Drive no configurado)", level="warn")
         return None
-    try:
-        from googleapiclient.http import MediaFileUpload
-        base_name = original_name or local_path.name
-        drive_name = _build_drive_name(base_name)
-        mime_type, _ = mimetypes.guess_type(str(local_path))
-        media = MediaFileUpload(
-            str(local_path),
-            mimetype=mime_type or "application/octet-stream",
-            resumable=False,
-        )
-        metadata = {
-            "name": drive_name,
-            "parents": [config.GOOGLE_DRIVE_FOLDER_ID],
-        }
-        f = service.files().create(
-            body=metadata,
-            media_body=media,
-            fields="id,name,webViewLink",
-        ).execute()
-        log.info(f"Drive upload OK: {f['name']} -> {f.get('webViewLink')}")
-        return {"id": f["id"], "name": f["name"], "link": f.get("webViewLink")}
-    except Exception as e:
-        log.exception(f"Drive: error subiendo {local_path}: {e}")
-        return None
+
+    return _do_upload(local_path, original_name, subfolder, service, retry_on_404=True)
+
+
+_TRANSIENT_ERROR_NAMES = {
+    "SSLEOFError", "SSLError", "ConnectionError", "ConnectionResetError",
+    "ReadTimeoutError", "ConnectTimeoutError", "ServerDisconnectedError",
+    "RemoteDisconnected", "ProtocolError", "IncompleteRead", "TimeoutError",
+    "ChunkedEncodingError",
+}
+
+
+def _is_transient_error(e: Exception) -> bool:
+    if type(e).__name__ in _TRANSIENT_ERROR_NAMES:
+        return True
+    msg = str(e).lower()
+    return any(t in msg for t in [
+        "ssl", "connection reset", "connection aborted", "timed out",
+        "eof occurred", "remote end closed", "broken pipe",
+    ])
+
+
+def _do_upload(local_path: Path, original_name: str | None, subfolder: str | None,
+               service, retry_on_404: bool = True, max_retries: int = 3) -> dict | None:
+    base_name = original_name or local_path.name
+    drive_name = _build_drive_name(base_name)
+    size_kb = local_path.stat().st_size // 1024 if local_path.exists() else 0
+
+    # Resolver carpeta destino (raíz o subcarpeta del día)
+    parent_id = config.GOOGLE_DRIVE_FOLDER_ID
+    if subfolder:
+        parent_id = _get_or_create_folder(subfolder, parent_id, service)
+
+    log_event("drive", f"⬆️ Subiendo a Drive: {drive_name}",
+              {"size_kb": size_kb, "subfolder": subfolder or "(raíz)"})
+
+    last_error = None
+    for intento in range(max_retries):
+        t0 = time.time()
+        try:
+            from googleapiclient.http import MediaFileUpload
+            mime_type, _ = mimetypes.guess_type(str(local_path))
+            media = MediaFileUpload(
+                str(local_path),
+                mimetype=mime_type or "application/octet-stream",
+                resumable=False,
+            )
+            metadata = {
+                "name": drive_name,
+                "parents": [parent_id],
+            }
+            f = service.files().create(
+                body=metadata,
+                media_body=media,
+                fields="id,name,webViewLink",
+            ).execute()
+            elapsed = round((time.time() - t0) * 1000)
+            log.info(f"Drive upload OK: {f['name']} -> {f.get('webViewLink')}")
+            suffix = f" (reintento #{intento})" if intento > 0 else ""
+            log_event("drive", f"✓ Subido en {elapsed}ms{suffix}",
+                      {"link": f.get("webViewLink"), "name": f["name"]})
+            return {"id": f["id"], "name": f["name"], "link": f.get("webViewLink")}
+        except Exception as e:
+            last_error = e
+            msg = str(e)
+
+            # 404 (subcarpeta borrada): invalidar cache y reintentar
+            if retry_on_404 and subfolder and ("File not found" in msg or "404" in msg):
+                log.warning(f"Drive: subcarpeta '{subfolder}' borrada, invalido cache")
+                log_event("drive", "♻️ Cache de subcarpeta invalidada, reintentando", level="warn")
+                _folder_cache.pop((config.GOOGLE_DRIVE_FOLDER_ID, subfolder), None)
+                parent_id = _get_or_create_folder(subfolder, config.GOOGLE_DRIVE_FOLDER_ID, service)
+                retry_on_404 = False  # solo una vez
+                continue
+
+            # Errores transitorios (SSL, conexión, timeout): reintento con backoff
+            if _is_transient_error(e) and intento < max_retries - 1:
+                wait = 2 ** intento  # 1s, 2s, 4s
+                log_event("drive",
+                          f"♻️ Error transitorio ({type(e).__name__}), reintento en {wait}s",
+                          {"intento": intento + 1, "error": msg[:120]}, level="warn")
+                time.sleep(wait)
+                continue
+
+            # Error definitivo o se agotaron reintentos
+            break
+
+    log.exception(f"Drive: error subiendo {local_path}: {last_error}")
+    log_event("drive", f"❌ Error subiendo: {type(last_error).__name__}",
+              {"error": str(last_error)[:200]}, level="error")
+    return None
 
 
 def reset_service():

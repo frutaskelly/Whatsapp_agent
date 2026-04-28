@@ -17,13 +17,63 @@ log = logging.getLogger(__name__)
 
 def maybe_process(phone: str, attachment_path: Path | None, ai_result: dict,
                   original_filename: str | None = None) -> dict | None:
-    """Si Claude dijo procesar_archivo y hay Excel, ejecuta el pipeline completo.
+    """Disparador post-AI: ejecuta el pipeline correcto según la acción.
 
-    Devuelve un dict con info del resultado (o None si no aplica). Loguea
-    automáticamente un mensaje "out" para que el dashboard lo refleje.
-    `original_filename` ayuda al procesador a extraer la fecha del nombre real.
+    - accion=procesar_archivo: corre el procesador de pedidos completo.
+    - accion=aplicar_ajuste:   aplica modificaciones al estado del día y
+                                regenera la nota de remisión corregida.
+    Devuelve un dict con info del resultado (o None si no aplica).
+    Loguea automáticamente un mensaje "out" para que el dashboard lo refleje.
     """
-    if ai_result.get("accion") != "procesar_archivo":
+    accion = ai_result.get("accion")
+
+    # IMPORTANTE: solo disparamos el handler cuando 'accion' es explícita.
+    # Si Claude detectó la intención pero falta info y está pidiendo aclaración,
+    # accion="nada" y NO debe ejecutar nada (es solo conversación).
+
+    # Caso 0a: recargar lista de precios (después de editar el Excel)
+    if accion == "recargar_precios":
+        return _recargar_precios(phone)
+
+    # Caso 0b: consolidar notas vigentes en un solo PDF
+    if accion == "consolidar_notas":
+        return _consolidar_notas(phone)
+
+    # Caso 0c: generar/regenerar la relación de documentos del día
+    if accion == "generar_relacion":
+        return _generar_relacion_handler(phone)
+
+    # Caso 0d: imprimir una nota específica por folio
+    if accion == "imprimir_nota_folio":
+        folio = (ai_result.get("datos") or {}).get("folio")
+        return _imprimir_nota_folio(phone, folio)
+
+    # Caso 0e–h: control de documentos (estados de folios)
+    if accion == "aceptar_folio":
+        folios = (ai_result.get("datos") or {}).get("folios") or []
+        return _control_estado(phone, folios, "aceptar")
+    if accion == "cancelar_folio":
+        folios = (ai_result.get("datos") or {}).get("folios") or []
+        return _control_estado(phone, folios, "cancelar")
+    if accion == "reactivar_folio":
+        folios = (ai_result.get("datos") or {}).get("folios") or []
+        return _control_estado(phone, folios, "reactivar")
+    if accion == "reporte_control":
+        return _reporte_control(phone)
+
+    # Caso 1: modificación del pedido (cliente cambia ANTES de surtir, productos FyV)
+    if accion == "aplicar_modificacion":
+        return _aplicar_modificaciones_desde_ai(phone, ai_result)
+
+    # Caso 2: extras para cubrir desabasto (productos NO-FyV, hoja y nota APARTE)
+    if accion == "aplicar_extra":
+        return _aplicar_extras_desde_ai(phone, ai_result)
+
+    # Caso 3: ajustes de entrega (personal después de surtir)
+    if accion == "aplicar_ajuste":
+        return _aplicar_ajustes_desde_ai(phone, ai_result)
+
+    if accion != "procesar_archivo":
         return None
     if not attachment_path:
         return None
@@ -47,6 +97,14 @@ def maybe_process(phone: str, attachment_path: Path | None, ai_result: dict,
         return {"error": "no BD sheet"}
 
     output_path = result["output_path"]
+    pdf_path = result.get("pdf_path")
+    lista_compras_path = result.get("lista_compras_path")
+    lista_compras_xlsx_path = result.get("lista_compras_xlsx_path")
+    notas_path = result.get("notas_path")
+    relacion_path = result.get("relacion_path")
+    relacion_pdf_path = result.get("relacion_pdf_path")
+    notas_total = result.get("notas_total_general")
+    notas_sin_precio = result.get("notas_sin_precio", 0)
     desconocidos = result.get("hospitales_desconocidos", [])
     sin_fyv = result.get("hospitales_si_sin_pedido_fyv", [])
     con_fyv = result.get("hospitales_con_fyv", [])
@@ -54,8 +112,16 @@ def maybe_process(phone: str, attachment_path: Path | None, ai_result: dict,
     productos_cambio = result.get("productos_cambio_lote", [])
     fecha = result.get("fecha", "fecha desconocida")
 
-    # Subir a Drive
-    drive_info = drive_upload(output_path)
+    # Subir Excel, PDF, Notas y Relación a Drive en subcarpeta por fecha
+    from .pedido_processor import fecha_a_iso
+    subfolder = fecha_a_iso(fecha)
+    drive_info = drive_upload(output_path, subfolder=subfolder)
+    drive_pdf = drive_upload(pdf_path, subfolder=subfolder) if pdf_path else None
+    drive_lista_compras = drive_upload(lista_compras_path, subfolder=subfolder) if lista_compras_path else None
+    drive_lista_compras_xlsx = drive_upload(lista_compras_xlsx_path, subfolder=subfolder) if lista_compras_xlsx_path else None
+    drive_notas = drive_upload(notas_path, subfolder=subfolder) if notas_path else None
+    drive_relacion = drive_upload(relacion_path, subfolder=subfolder) if relacion_path else None
+    drive_relacion_pdf = drive_upload(relacion_pdf_path, subfolder=subfolder) if relacion_pdf_path else None
 
     # ─── Mensaje completo (lo construye Python, no se corta nunca) ───────────
     lines = [
@@ -97,12 +163,37 @@ def maybe_process(phone: str, attachment_path: Path | None, ai_result: dict,
         for h in desconocidos:
             lines.append(f"  • {h}")
 
-    # Link de Drive
+    # Links de Drive
     lines.append("")
     if drive_info:
         lines.append(f"📂 Excel completo en Drive: {drive_info['link']}")
     else:
-        lines.append("⚠️ Guardado local (no se pudo subir a Drive)")
+        lines.append("⚠️ Excel guardado local (no se pudo subir a Drive)")
+    if drive_pdf:
+        lines.append(f"🖨️ PDF para imprimir (1 hoja x hospital): {drive_pdf['link']}")
+    elif pdf_path:
+        lines.append("⚠️ PDF guardado local (no se pudo subir a Drive)")
+    if drive_lista_compras:
+        lines.append(f"🛒 Lista de compras (PDF para imprimir): {drive_lista_compras['link']}")
+    elif lista_compras_path:
+        lines.append("⚠️ Lista de compras PDF guardada local (no se pudo subir a Drive)")
+    if drive_lista_compras_xlsx:
+        lines.append(f"📝 Lista de compras (Excel editable): {drive_lista_compras_xlsx['link']}")
+    elif lista_compras_xlsx_path:
+        lines.append("⚠️ Lista de compras Excel guardada local (no se pudo subir a Drive)")
+    if drive_notas:
+        warn_str = f" ⚠️ {notas_sin_precio} sin precio" if notas_sin_precio else ""
+        lines.append(f"💵 Notas de remisión con precios{warn_str}: {drive_notas['link']}")
+    elif notas_path:
+        lines.append("⚠️ Notas de remisión guardadas local (no se pudo subir a Drive)")
+    if drive_relacion:
+        lines.append(f"📋 Relación de documentos (Excel): {drive_relacion['link']}")
+    elif relacion_path:
+        lines.append("⚠️ Relación Excel guardada local (no se pudo subir a Drive)")
+    if drive_relacion_pdf:
+        lines.append(f"📋 Relación de documentos (PDF horizontal para imprimir): {drive_relacion_pdf['link']}")
+    elif relacion_pdf_path:
+        lines.append("⚠️ Relación PDF guardada local (no se pudo subir a Drive)")
 
     msg = "\n".join(lines)
 
@@ -115,15 +206,519 @@ def maybe_process(phone: str, attachment_path: Path | None, ai_result: dict,
     if drive_info:
         meta["drive_link"] = drive_info["link"]
         meta["drive_id"] = drive_info["id"]
+    if drive_pdf:
+        meta["drive_pdf_link"] = drive_pdf["link"]
+        meta["drive_pdf_id"] = drive_pdf["id"]
+    if drive_notas:
+        meta["drive_notas_link"] = drive_notas["link"]
+        meta["drive_notas_id"] = drive_notas["id"]
+        meta["notas_total"] = notas_total
     message_log.log_message("out", phone, "text", msg, meta)
 
     return {
         "output_path": str(output_path),
         "output_name": output_path.name,
+        "pdf_path": str(pdf_path) if pdf_path else None,
+        "notas_path": str(notas_path) if notas_path else None,
+        "notas_total_general": notas_total,
         "drive": drive_info,
+        "drive_pdf": drive_pdf,
+        "drive_notas": drive_notas,
         "hospitales_si": result.get("hospitales_si", []),
         "hospitales_con_fyv": con_fyv,
         "hospitales_si_sin_pedido_fyv": sin_fyv,
         "hospitales_desconocidos": desconocidos,
         "hospitales_excluidos_detectados": result.get("hospitales_excluidos_detectados", []),
     }
+
+
+def _aplicar_ajustes_desde_ai(phone: str, ai_result: dict) -> dict:
+    """Aplica los ajustes que Claude extrajo del mensaje texto."""
+    from .ajuste_entrega import aplicar_ajustes
+
+    datos = ai_result.get("datos", {}) or {}
+
+    # Normalizar a una lista de (hospital, ajustes)
+    grupos: list[tuple[str, list]] = []
+    if "ajustes_por_hospital" in datos:
+        for g in datos["ajustes_por_hospital"]:
+            grupos.append((g.get("hospital", ""), g.get("ajustes", []) or []))
+    elif "hospital" in datos:
+        grupos.append((datos.get("hospital", ""), datos.get("ajustes", []) or []))
+    else:
+        msg = "⚠️ Detecté un ajuste pero no entendí el hospital o productos. Reformula?"
+        message_log.log_message("out", phone, "text", msg, {"ajuste_error": True})
+        return {"error": "datos incompletos"}
+
+    resultados = []
+    lines = ["📝 *Ajustes aplicados:*"]
+    last_relacion = None
+    last_relacion_pdf = None
+    for hospital_input, ajustes in grupos:
+        if not ajustes:
+            continue
+        r = aplicar_ajustes(hospital_input, ajustes)
+        resultados.append(r)
+        if not r.get("ok"):
+            lines.append(f"❌ {hospital_input}: {r.get('error', 'error')}")
+            continue
+        lines.append("")
+        lines.append(f"🏥 *{r['hospital_resuelto']}*")
+        for c in r["cambios"]:
+            antes = c["cantidad_anterior"]
+            despues = c["cantidad_nueva"]
+            if despues == 0:
+                lines.append(f"  ❌ {c['alimento']}: ELIMINADO ({antes} → 0)")
+            else:
+                lines.append(f"  ➖ {c['alimento']}: {antes} → {despues}")
+        if r.get("no_encontrados"):
+            lines.append(f"  ⚠️ no encontré: {', '.join(r['no_encontrados'])}")
+        if r.get("drive_link"):
+            lines.append(f"  🖨️ Nota corregida: {r['drive_link']}")
+        # Capturar el último link de relación (la última iteración tiene el estado final)
+        if r.get("drive_relacion_link"):
+            last_relacion = r["drive_relacion_link"]
+        if r.get("drive_relacion_pdf_link"):
+            last_relacion_pdf = r["drive_relacion_pdf_link"]
+
+    if last_relacion or last_relacion_pdf:
+        lines.append("")
+        if last_relacion:
+            lines.append(f"📋 Relación actualizada (Excel): {last_relacion}")
+        if last_relacion_pdf:
+            lines.append(f"📋 Relación actualizada (PDF): {last_relacion_pdf}")
+
+    msg = "\n".join(lines)
+    meta = {"ajuste": True, "resultados": resultados}
+    message_log.log_message("out", phone, "text", msg, meta)
+
+    return {"ajuste": True, "resultados": resultados}
+
+
+def _aplicar_modificaciones_desde_ai(phone: str, ai_result: dict) -> dict:
+    """Aplica modificaciones pre-surtido y regenera el PDF imprimible + notas."""
+    from .modificacion_pedido import aplicar_modificaciones, regenerar_archivos
+
+    datos = ai_result.get("datos", {}) or {}
+    grupos: list[tuple[str, list]] = []
+    if "modificaciones_por_hospital" in datos:
+        for g in datos["modificaciones_por_hospital"]:
+            grupos.append((g.get("hospital", ""), g.get("modificaciones", []) or []))
+    elif "hospital" in datos:
+        grupos.append((datos.get("hospital", ""), datos.get("modificaciones", []) or []))
+    else:
+        msg = "⚠️ Detecté una modificación pero no entendí el hospital o productos. Reformula?"
+        message_log.log_message("out", phone, "text", msg, {"modificacion_error": True})
+        return {"error": "datos incompletos"}
+
+    resultados = []
+    lines = ["📦 *Modificaciones aplicadas al pedido:*"]
+    fecha_iso = None
+    for hospital_input, modificaciones in grupos:
+        if not modificaciones:
+            continue
+        r = aplicar_modificaciones(hospital_input, modificaciones)
+        resultados.append(r)
+        if not r.get("ok"):
+            lines.append(f"❌ {hospital_input}: {r.get('error', 'error')}")
+            continue
+        fecha_iso = r["fecha"]
+        lines.append("")
+        lines.append(f"🏥 *{r['hospital_resuelto']}*")
+        for c in r["cambios"]:
+            op_icon = {"agregar": "➕", "restar": "➖", "cancelar": "❌", "fijar": "🔧"}.get(c["operacion"], "•")
+            antes = c["cantidad_anterior"]
+            despues = c["cantidad_nueva"]
+            unidad = c.get("presentacion", "")
+            if c["operacion"] == "agregar" and antes == 0:
+                lines.append(f"  {op_icon} {c['alimento']}: 0 → {despues} {unidad}  (NUEVO)")
+            elif c["operacion"] in ("cancelar", "eliminar"):
+                lines.append(f"  {op_icon} {c['alimento']}: {antes} → 0 {unidad}  (ELIMINADO)")
+            else:
+                lines.append(f"  {op_icon} {c['alimento']}: {antes} → {despues} {unidad}")
+        if r.get("no_encontrados"):
+            lines.append(f"  ⚠️ no encontré: {', '.join(r['no_encontrados'])}")
+
+    # Regenerar PDF imprimible + lista compras + notas con el estado actualizado
+    if fecha_iso:
+        regen = regenerar_archivos(fecha_iso)
+        lines.append("")
+        if regen.get("drive_pdf_imprimible"):
+            lines.append(f"🖨️ PDF imprimible actualizado: {regen['drive_pdf_imprimible']['link']}")
+        if regen.get("drive_lista_compras"):
+            lines.append(f"🛒 Lista de compras actualizada (PDF): {regen['drive_lista_compras']['link']}")
+        if regen.get("drive_lista_compras_xlsx"):
+            lines.append(f"📝 Lista de compras actualizada (Excel): {regen['drive_lista_compras_xlsx']['link']}")
+        if regen.get("drive_notas"):
+            lines.append(f"💵 Notas con precios actualizadas: {regen['drive_notas']['link']}")
+        if regen.get("drive_relacion"):
+            lines.append(f"📋 Relación actualizada (Excel): {regen['drive_relacion']['link']}")
+        if regen.get("drive_relacion_pdf"):
+            lines.append(f"📋 Relación actualizada (PDF): {regen['drive_relacion_pdf']['link']}")
+    else:
+        lines.append("")
+        lines.append("⚠️ No se regeneraron archivos (ningún hospital se modificó).")
+
+    msg = "\n".join(lines)
+    meta = {"modificacion": True, "resultados": resultados}
+    message_log.log_message("out", phone, "text", msg, meta)
+    return {"modificacion": True, "resultados": resultados}
+
+
+def _aplicar_extras_desde_ai(phone: str, ai_result: dict) -> dict:
+    """Procesa extras para cubrir desabasto. Genera/actualiza hoja + nota APARTE."""
+    from .extras_pedido import agregar_extras, regenerar_archivos_extras
+
+    datos = ai_result.get("datos", {}) or {}
+    extras_input = datos.get("extras") or []
+    if not extras_input:
+        msg = "⚠️ Detecté un extra pero no extraje productos. Reformula con cantidad y producto?"
+        message_log.log_message("out", phone, "text", msg, {"extra_error": True})
+        return {"error": "datos incompletos"}
+
+    res = agregar_extras(extras_input)
+    if not res.get("ok"):
+        msg = f"❌ No pude agregar los extras: {res.get('error', 'error')}"
+        message_log.log_message("out", phone, "text", msg, {"extra_error": True})
+        return {"error": res.get("error", "?")}
+
+    fecha_iso = res["fecha"]
+    regen = regenerar_archivos_extras(fecha_iso)
+
+    lines = ["📦 *EXTRAS solicitados (cubrir desabasto):*"]
+    for c in res["cambios"]:
+        precio_marca = "" if c["tiene_precio"] else "  ⚠️ (sin precio en lista)"
+        lines.append(f"  ➕ {c['hospital']}: {c['cantidad']} {c['presentacion']} de "
+                     f"*{c['alimento']}*{precio_marca}")
+    if res.get("sin_precio"):
+        lines.append("")
+        lines.append(f"⚠️ Sin precio en la lista oficial: {', '.join(res['sin_precio'])}")
+        lines.append("    Agrégalos a Lista_Precios_EHMO.xlsx para que cobren correctamente.")
+
+    lines.append("")
+    if regen.get("drive_hoja_surtido"):
+        lines.append(f"🖨️ Hoja de surtido EXTRAS: {regen['drive_hoja_surtido']['link']}")
+    if regen.get("drive_notas"):
+        lines.append(f"💵 Nota de remisión EXTRAS: {regen['drive_notas']['link']}")
+
+    msg = "\n".join(lines)
+    meta = {"extra": True, "fecha": fecha_iso, "cambios": res["cambios"]}
+    if regen.get("drive_hoja_surtido"):
+        meta["drive_hoja_extras"] = regen["drive_hoja_surtido"]["link"]
+    if regen.get("drive_notas"):
+        meta["drive_notas_extras"] = regen["drive_notas"]["link"]
+    message_log.log_message("out", phone, "text", msg, meta)
+
+    return {"extra": True, "fecha": fecha_iso, "cambios": res["cambios"],
+            "regen": regen}
+
+
+def _generar_relacion_handler(phone: str) -> dict:
+    """Genera Excel + PDF de la Relación de Documentos del día más reciente."""
+    from .estado_pedido import cargar_estado_mas_reciente
+    from .relacion_documentos import generar_relacion_dia, generar_relacion_dia_pdf
+    from datetime import datetime
+    from . import config
+
+    state, fecha_iso = cargar_estado_mas_reciente()
+    if not state:
+        msg = "⚠️ No hay pedido del día procesado. Procesa el Excel primero."
+        message_log.log_message("out", phone, "text", msg, {"relacion": False})
+        return {"error": "no hay pedido"}
+
+    fecha_legible = state.get("fecha_legible", fecha_iso)
+    ts = datetime.now().strftime("%H%M%S")
+    drive_xlsx = None
+    drive_pdf = None
+
+    try:
+        rel = generar_relacion_dia(fecha_iso, fecha_legible=fecha_legible,
+                                    output_path=config.PROCESSED_DIR /
+                                    f"Relación Documentos {fecha_legible} {ts}.xlsx")
+        if rel and not rel.get("error"):
+            d = drive_upload(rel["output_path"], subfolder=fecha_iso)
+            if d: drive_xlsx = d["link"]
+        rel_pdf = generar_relacion_dia_pdf(fecha_iso, fecha_legible=fecha_legible,
+                                            output_path=config.PROCESSED_DIR /
+                                            f"Relación Documentos {fecha_legible} {ts}.pdf")
+        if rel_pdf and not rel_pdf.get("error"):
+            d = drive_upload(rel_pdf["output_path"], subfolder=fecha_iso)
+            if d: drive_pdf = d["link"]
+    except Exception as e:
+        log.exception(f"Error generando relación: {e}")
+        log_event("processor", f"⚠️ Error generando relación: {e}", level="warn")
+        msg = f"⚠️ Error al generar la relación: {e}"
+        message_log.log_message("out", phone, "text", msg, {"relacion": False})
+        return {"error": str(e)}
+
+    lines = [f"📋 *Relación de documentos* — {fecha_legible}"]
+    if drive_xlsx:
+        lines.append(f"📊 Excel editable: {drive_xlsx}")
+    if drive_pdf:
+        lines.append(f"🖨️ PDF horizontal para imprimir: {drive_pdf}")
+    if not drive_xlsx and not drive_pdf:
+        lines.append("⚠️ Generada local pero no se pudo subir a Drive.")
+
+    msg = "\n".join(lines)
+    meta = {"relacion": True, "drive_xlsx": drive_xlsx, "drive_pdf": drive_pdf}
+    message_log.log_message("out", phone, "text", msg, meta)
+    return {"relacion": True, "drive_xlsx": drive_xlsx, "drive_pdf": drive_pdf}
+
+
+def _control_estado(phone: str, folios: list, accion: str) -> dict:
+    """Aplica una acción (aceptar/cancelar/reactivar) a una lista de folios."""
+    from .control_documentos import (
+        aceptar_folio, cancelar_folio, reactivar_folio, ESTADO_ICON,
+    )
+
+    if not folios:
+        msg = f"⚠️ ¿Qué folio(s) quieres {accion}? Dime el número."
+        message_log.log_message("out", phone, "text", msg, {"control_error": True})
+        return {"error": "sin folios"}
+
+    op = {"aceptar": aceptar_folio,
+          "cancelar": cancelar_folio,
+          "reactivar": reactivar_folio}[accion]
+    titulo = {"aceptar": "✅ Folios aceptados para facturar",
+              "cancelar": "❌ Folios cancelados",
+              "reactivar": "🔄 Folios reactivados"}[accion]
+
+    resultados = []
+    lines = [f"*{titulo}:*"]
+    for f in folios:
+        r = op(f)
+        resultados.append(r)
+        if r.get("ok"):
+            ic = ESTADO_ICON.get(r["nuevo"], "?")
+            destino = r.get("hospital") or r.get("destino") or "?"
+            try:
+                folio_int = int(r.get("folio") or 0)
+            except (TypeError, ValueError):
+                folio_int = "?"
+            lines.append(f"  {ic} folio {folio_int} — {destino}: "
+                         f"{r['anterior']} → {r['nuevo']}")
+        else:
+            lines.append(f"  ⚠️ {f}: {r.get('error', '?')}")
+
+    msg = "\n".join(lines)
+    meta = {"control": True, "accion": accion, "resultados": resultados}
+    message_log.log_message("out", phone, "text", msg, meta)
+    return {"control": True, "accion": accion, "resultados": resultados}
+
+
+def _reporte_control(phone: str) -> dict:
+    """Devuelve el reporte de control de documentos por estado."""
+    from .control_documentos import reporte_estados, ESTADO_ICON
+
+    rep = reporte_estados()
+    if rep.get("error"):
+        msg = f"⚠️ {rep['error']}"
+        message_log.log_message("out", phone, "text", msg, {"control_error": True})
+        return {"error": rep["error"]}
+
+    fecha = rep.get("fecha_legible", rep.get("fecha"))
+    grupos = rep["grupos"]
+    lines = [f"📋 *Control de documentos — {fecha}*"]
+    orden = ["aceptado", "modificado", "vigente", "cancelado"]
+    for est in orden:
+        items = grupos.get(est) or []
+        if not items:
+            continue
+        lines.append("")
+        lines.append(f"{ESTADO_ICON.get(est, '?')} *{est.upper()}* ({len(items)})")
+        for it in sorted(items, key=lambda x: x.get("folio") or ""):
+            try:
+                fnum = int(it.get("folio") or 0)
+            except (TypeError, ValueError):
+                fnum = "?"
+            lines.append(f"  • folio {fnum} — {it['destino']}")
+    # Resumen
+    lines.append("")
+    listos = len(grupos.get("aceptado") or [])
+    pendientes = len(grupos.get("vigente") or []) + len(grupos.get("modificado") or [])
+    cancelados = len(grupos.get("cancelado") or [])
+    lines.append(f"📊 Listos para facturar: {listos} · Pendientes: {pendientes} · Cancelados: {cancelados}")
+
+    msg = "\n".join(lines)
+    meta = {"reporte_control": True, "grupos": {k: len(v) for k, v in grupos.items()}}
+    message_log.log_message("out", phone, "text", msg, meta)
+    return {"reporte_control": True, "grupos": grupos}
+
+
+def _imprimir_nota_folio(phone: str, folio_input: str | None) -> dict:
+    """Genera el PDF de UNA nota específica por su folio.
+
+    Si el folio es de un hospital → regenera nota corregida individual.
+    Si el folio es del ALMACÉN EHMO (extras) → regenera la nota EXTRAS.
+    """
+    from .estado_pedido import cargar_estado_mas_reciente, estado_a_dataframe
+    from .extras_pedido import cargar_extras, regenerar_archivos_extras
+    from .nota_remision import generar_notas_remision
+    from datetime import datetime
+    from . import config
+
+    if not folio_input:
+        msg = "⚠️ No me dijiste qué folio. Dime el número (ej. 'imprime la nota 13')."
+        message_log.log_message("out", phone, "text", msg, {"imprimir_folio": False})
+        return {"error": "sin folio"}
+
+    # Normalizar folio: '13' → '0000000013'
+    try:
+        folio_int = int(str(folio_input).lstrip("0") or "0")
+        folio_str = f"{folio_int:010d}"
+    except (TypeError, ValueError):
+        msg = f"⚠️ Folio '{folio_input}' no es un número válido."
+        message_log.log_message("out", phone, "text", msg, {"imprimir_folio": False})
+        return {"error": "folio inválido"}
+
+    state, fecha_iso = cargar_estado_mas_reciente()
+    if not state:
+        msg = "⚠️ No hay pedido del día procesado."
+        message_log.log_message("out", phone, "text", msg, {"imprimir_folio": False})
+        return {"error": "sin pedido"}
+
+    fecha_legible = state.get("fecha_legible", fecha_iso)
+    ts = datetime.now().strftime("%H%M%S")
+
+    # 1) Buscar entre hospitales del pedido normal
+    hospital_match = None
+    for h, info in state["hospitales"].items():
+        if info.get("folio_remision") == folio_str:
+            hospital_match = (h, info)
+            break
+
+    if hospital_match:
+        hospital_resuelto, info = hospital_match
+        if info.get("total", 0) <= 0:
+            msg = f"⚠️ El folio {folio_int} ({hospital_resuelto}) no tiene productos vigentes."
+            message_log.log_message("out", phone, "text", msg, {"imprimir_folio": False})
+            return {"error": "sin productos"}
+
+        df = estado_a_dataframe(state)
+        df_solo = df[df["UNIDAD"] == hospital_resuelto]
+        h_short = hospital_resuelto.replace("Hospital ", "").replace(
+            "Básico Comunitario ", "HBC ")[:40].strip()
+        output_path = (config.PROCESSED_DIR /
+                       f"Nota Folio {folio_int} {h_short} {fecha_legible} {ts}.pdf")
+        folios_existentes = {hospital_resuelto: folio_str}
+        try:
+            info_gen = generar_notas_remision(df_solo, fecha_legible, output_path,
+                                               folios_existentes=folios_existentes)
+            d = drive_upload(output_path, subfolder=fecha_iso)
+            link = d["link"] if d else None
+            msg = (f"🖨️ *Nota folio {folio_int}* — {hospital_resuelto}\n"
+                   f"{('PDF: ' + link) if link else 'Generada local (no se pudo subir a Drive)'}")
+            message_log.log_message("out", phone, "text", msg,
+                                     {"imprimir_folio": True, "folio": folio_str,
+                                      "hospital": hospital_resuelto, "drive_link": link})
+            return {"folio": folio_str, "hospital": hospital_resuelto, "drive_link": link}
+        except Exception as e:
+            log.exception(f"Error imprimiendo folio {folio_str}: {e}")
+            msg = f"⚠️ Error generando la nota: {e}"
+            message_log.log_message("out", phone, "text", msg, {"imprimir_folio": False})
+            return {"error": str(e)}
+
+    # 2) Buscar entre folios de extras
+    extras_state = cargar_extras(fecha_iso)
+    if extras_state:
+        folios_destinos = extras_state.get("folios_por_destino") or {}
+        for destino, f in folios_destinos.items():
+            if f == folio_str:
+                # Regenerar la nota EXTRAS (es una sola con todos los items)
+                regen = regenerar_archivos_extras(fecha_iso)
+                link = (regen.get("drive_notas") or {}).get("link") if not regen.get("error") else None
+                msg = (f"🖨️ *Nota folio {folio_int}* — {destino} (EXTRAS)\n"
+                       f"{('PDF: ' + link) if link else 'Generada local (no se pudo subir a Drive)'}")
+                message_log.log_message("out", phone, "text", msg,
+                                         {"imprimir_folio": True, "folio": folio_str,
+                                          "destino": destino, "drive_link": link})
+                return {"folio": folio_str, "destino": destino, "drive_link": link}
+
+    # No se encontró
+    folios_validos = []
+    for h, info in state["hospitales"].items():
+        f = info.get("folio_remision")
+        if f and info.get("total", 0) > 0:
+            folios_validos.append(f"{int(f)} → {h}")
+    if extras_state:
+        for d, f in (extras_state.get("folios_por_destino") or {}).items():
+            folios_validos.append(f"{int(f)} → {d} (EXTRA)")
+    msg = (f"⚠️ No encontré el folio {folio_int}. Folios vigentes hoy:\n" +
+           "\n".join(f"  • {fv}" for fv in sorted(folios_validos)))
+    message_log.log_message("out", phone, "text", msg, {"imprimir_folio": False})
+    return {"error": f"folio {folio_int} no existe"}
+
+
+def _recargar_precios(phone: str) -> dict:
+    """Refresca la lista de precios desde el Excel sin reiniciar Flask."""
+    from .pricing import cargar_lista_precios
+    cargar_lista_precios.cache_clear()
+    items = cargar_lista_precios()
+    msg = f"🔄 Lista de precios recargada — {len(items)} productos activos."
+    message_log.log_message("out", phone, "text", msg, {"reload_prices": True, "count": len(items)})
+    return {"reload_prices": True, "count": len(items)}
+
+
+def _consolidar_notas(phone: str) -> dict:
+    """Genera un PDF único con TODAS las notas vigentes del día (estado actual).
+
+    Útil para imprimir todas las notas finales después de modificaciones/ajustes.
+    Lee el estado del día más reciente, regenera notas con folios existentes,
+    sube a Drive en la subcarpeta del día.
+    """
+    from .estado_pedido import cargar_estado_mas_reciente, estado_a_dataframe
+    from .nota_remision import generar_notas_remision
+    from datetime import datetime
+    from . import config
+
+    state, fecha_iso = cargar_estado_mas_reciente()
+    if not state:
+        msg = "⚠️ No hay pedido del día procesado, no puedo consolidar notas."
+        message_log.log_message("out", phone, "text", msg, {"consolidar": False})
+        return {"error": "no hay pedido"}
+
+    df = estado_a_dataframe(state)
+    if df.empty:
+        msg = "⚠️ El estado del día no tiene productos vigentes."
+        message_log.log_message("out", phone, "text", msg, {"consolidar": False})
+        return {"error": "estado vacío"}
+
+    fecha_legible = state.get("fecha_legible", fecha_iso)
+    ts = datetime.now().strftime("%H%M%S")
+    output_path = config.PROCESSED_DIR / f"Notas Remisión CONSOLIDADAS {fecha_legible} {ts}.pdf"
+
+    folios_existentes = {h: hi.get("folio_remision")
+                          for h, hi in state["hospitales"].items()
+                          if hi.get("folio_remision")}
+
+    drive_link = None
+    notas_count = 0
+    try:
+        info = generar_notas_remision(df, fecha_legible, output_path,
+                                       folios_existentes=folios_existentes)
+        notas_count = info.get("hospitales", 0)
+        drive_info = drive_upload(output_path, subfolder=fecha_iso)
+        if drive_info:
+            drive_link = drive_info["link"]
+    except Exception as e:
+        log.exception(f"Error consolidando notas: {e}")
+        log_event("processor", f"⚠️ Error consolidando notas: {e}", level="warn")
+        msg = f"⚠️ Error al consolidar: {e}"
+        message_log.log_message("out", phone, "text", msg, {"consolidar": False})
+        return {"error": str(e)}
+
+    lines = [
+        f"📑 *Notas de remisión consolidadas* — {fecha_legible}",
+        f"Total de notas: {notas_count} hospitales",
+    ]
+    if drive_link:
+        lines.append(f"🖨️ PDF para imprimir todas juntas: {drive_link}")
+    else:
+        lines.append("⚠️ Guardado local (no se pudo subir a Drive)")
+
+    msg = "\n".join(lines)
+    meta = {"consolidar": True, "notas_count": notas_count}
+    if drive_link:
+        meta["drive_link"] = drive_link
+    message_log.log_message("out", phone, "text", msg, meta)
+    return {"consolidar": True, "drive_link": drive_link, "notas_count": notas_count}

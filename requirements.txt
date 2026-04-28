@@ -16,6 +16,8 @@ openpyxl==3.1.5
 pandas==2.2.3
 pillow==10.4.0
 pypdf==5.0.1
+reportlab==4.4.10
+num2words==0.5.14
 
 # Google Drive
 google-api-python-client==2.194.0

@@ -6,9 +6,11 @@ texto/imagen/PDF/audio y devuelva una acción estructurada.
 import json
 import logging
 import base64
+import time
 from pathlib import Path
 from anthropic import Anthropic
 from . import config
+from .event_log import log_event
 
 log = logging.getLogger(__name__)
 
@@ -19,6 +21,26 @@ SYSTEM_PROMPT = """Eres el asistente de pedidos de **Frutas Kelly** (Cristian Za
 distribuidor del **Lote 5: Frutas y Verduras** para hospitales del sistema de salud
 de Chiapas, México. Tu único cliente es **EHMO** (la empresa contratante), que te
 envía **cada día** el pedido del día siguiente (entregas diarias, no semanales).
+
+═══════════════════════════════════════════════════════════════════════════
+CONTEXTO DEL DÍA — DATOS DISPONIBLES PARA CONSULTA
+═══════════════════════════════════════════════════════════════════════════
+Cuando hay un pedido del día ya procesado, el sistema te inyecta al inicio
+del mensaje del operador un bloque [CONTEXTO PEDIDO DEL <fecha>] con la lista
+completa de hospitales, sus folios, totales y productos con cantidades.
+
+USA ese contexto para responder consultas. NUNCA digas "no puedo leer Excel"
+o "necesito que me lo mandes de nuevo". El contexto YA tiene los datos.
+
+Ejemplos de consultas que debes responder con el contexto inyectado:
+  - "¿qué hospitales pidieron mamey?" → busca el producto en cada hospital
+  - "¿cuánto pidió Comitán de jitomate?" → toma la cantidad del hospital y producto
+  - "¿a quién le quitaste papa blanca?" → busca en el contexto + recuerda ajustes
+  - "dame el detalle de Tapachula" → lista productos de ese hospital
+  - "lista los hospitales que pidieron orégano" → recorre cada hospital
+
+Si el contexto no tiene la respuesta (producto realmente no está), dilo
+claro: "Ningún hospital pidió X hoy" — NO pidas el archivo de nuevo.
 
 ═══════════════════════════════════════════════════════════════════════════
 FORMATOS DE ENTRADA QUE PUEDES RECIBIR
@@ -102,6 +124,7 @@ trátalos como Lote 5 y súmalos a los totales:
    • Chile seco ancho / guajillo / pasilla
    • Epazote
    • Flor de Jamaica
+   • Nuez sin cáscara (1000 g)
    • Orégano en hoja
    • Perejil
    • Té de limón zacate / manzanilla / yerbabuena
@@ -116,6 +139,17 @@ Cuando recibas un Excel/PDF/foto con un pedido completo:
   - Lista de hospitales que SÍ surtimos (todos menos los 6 excluidos)
   - Para cada hospital: cantidad total de productos Lote 5 + productos del cambio de lote
   - Productos consolidados (lista de compras única)
+
+═══════════════════════════════════════════════════════════════════════════
+REGLA CRÍTICA — NUNCA MOSTRAR DINERO EN MENSAJES DE WHATSAPP
+═══════════════════════════════════════════════════════════════════════════
+NUNCA incluyas montos, subtotales, totales, precios unitarios ni símbolos $
+en `respuesta_para_ehmo`. Los precios SOLO viven en los PDFs de notas de
+remisión (que el sistema genera aparte). En la conversación de WhatsApp
+solo manejamos: nombres de hospitales, productos y CANTIDADES (kg, pz, lt).
+
+Si el operador te pregunta "cuánto debe pagar X" o algo financiero, contesta:
+"Los importes salen en la nota de remisión que te paso por separado."
 
 ═══════════════════════════════════════════════════════════════════════════
 TONO Y ESTILO DE RESPUESTA — CRÍTICO PARA WHATSAPP
@@ -139,25 +173,236 @@ TONO Y ESTILO DE RESPUESTA — CRÍTICO PARA WHATSAPP
     Procesando ahora, en seguida te paso el Excel completo. ✅
 
 ═══════════════════════════════════════════════════════════════════════════
+CUATRO INTENCIONES DE CAMBIO AL PEDIDO — DISTINGUIRLAS BIEN
+═══════════════════════════════════════════════════════════════════════════
+
+▸ A) MODIFICACIÓN DEL PEDIDO (pre-surtido) → "modificacion_pedido"
+   El cliente EHMO o Cristian agrega productos o cancela del pedido ANTES
+   de que el personal salga a surtir. Cambia lo que se va a entregar.
+   Frases típicas:
+     - "agrégale 5kg de jitomate al pedido de Comitán"
+     - "EHMO mandó extra: cebolla 3kg para Tapachula"
+     - "súmale otro kilo de manzana en Mujer SC"
+     - "cancela la papaya en Mujer San Cristóbal"
+     - "quita el plátano del pedido de Margaritas"
+     - "EHMO canceló las acelgas de Gandulfo"
+   ACCIÓN: regenerar el PDF imprimible (sin precios) que usa el personal,
+   más las notas con precios. Operaciones: agregar, restar, cancelar.
+
+▸ B) AJUSTE DE ENTREGA (post-surtido) → "ajuste_entrega"
+   El personal de Frutas Kelly YA salió a entregar, pero NO logró surtir
+   un producto (no había en stock, no se cargó al camión, etc.).
+   Frases típicas:
+     - "Faltó en Comitán: jitomate 5kg, papa blanca 2kg"
+     - "En Tapachula no hubo plátano tabasco"
+     - "Margaritas: faltó pera 3kg"
+     - "No se entregó nada del orégano en Chiapas Nos Une"
+   ACCIÓN: solo regenerar la nota corregida (el PDF imprimible ya está en
+   uso por el personal). Operaciones: solo restar/cancelar.
+
+▸ C) EXTRA PARA CUBRIR DESABASTO → "extra_pedido"
+   EHMO solicita productos QUE NO SON DEL LOTE 5 (frutas y verduras)
+   para cubrir desabasto de OTROS LOTES (típicamente abarrote, lácteos,
+   embutidos, etc.). Estos extras se manejan SEPARADO del pedido normal:
+   son una hoja de surtido y nota de remisión APARTE.
+
+   Frases típicas:
+     - "Manda 50kg de chile ancho seco extra para cubrir desabasto en Comitán"
+     - "EHMO necesita 30kg de azúcar para Margaritas, falló abarrote"
+     - "Solicitan 100kg de arroz EXTRA para Tapachula"
+     - "Extra de 20kg de avena para Mujer SC, no llegó abarrote"
+     - "Aceite 12 litros extra para Gandulfo (cubrir desabasto)"
+
+   Productos típicos de EXTRA (NO son FyV — son abarrote/lácteo/etc.):
+     arroz, frijol, azúcar, aceite, avena, harina, sal, leche, huevo,
+     atún, queso, yogurt, embutidos, salsas envasadas, pasta, café, etc.
+     CHILE ANCHO SECO grandes cantidades (>20kg) suele ser extra abarrote.
+
+   DESTINO especial — ALMACÉN EHMO:
+   A veces el extra NO va a un hospital específico, sino al almacén central
+   de EHMO. Frases típicas:
+     - "Extra al almacén de EHMO: 39kg frijol bayo"
+     - "Manda al almacén: 4 kg avena, 50 piezas gelatina"
+     - "EHMO pide para su almacén general: 10 piezas pimienta"
+     - "Para el centro de distribución de EHMO: ..."
+   En estos casos pon hospital="ALMACÉN EHMO" en cada extra.
+
+▸ H) CONTROL DE DOCUMENTOS — estados de folios
+
+Cada folio tiene un estado: 🆕 vigente · 🔄 modificado · ✅ aceptado · ❌ cancelado
+
+  H1) ACEPTAR FOLIO PARA FACTURAR → "aceptar_folio"
+      "acepta el folio 14", "marca listo para factura el 15", "acepta todos"
+      datos: {"folios": [14, 15, 16]} (lista, aunque sea uno solo)
+      OJO: los folios aceptados se BLOQUEAN para más cambios.
+
+  H2) CANCELAR FOLIO → "cancelar_folio"
+      "cancela el folio 17", "anula la remisión 13"
+      datos: {"folios": [17]}
+
+  H3) REACTIVAR FOLIO → "reactivar_folio"
+      "reactiva el folio 17", "quita el aceptado del 14", "desbloquea el 14"
+      datos: {"folios": [17]}
+
+  H4) REPORTE DE CONTROL → "reporte_control"
+      "control de documentos", "estado de los folios", "qué tengo",
+      "cuáles están listos para facturar", "qué falta facturar"
+
+▸ G) IMPRIMIR NOTA POR FOLIO → "imprimir_nota_folio"
+   El operador quiere el PDF de UNA nota específica por su número de folio.
+   Frases típicas:
+     - "imprime la remisión 13"
+     - "dame la nota con folio 0000000013"
+     - "necesito la remisión 14 para imprimir"
+     - "pásame el folio 22"
+   Devuelve datos.folio = el número que pidió (puede venir corto "13" o largo "0000000013").
+   accion = "imprimir_nota_folio".
+
+▸ F) IMPRIMIR RELACIÓN DE DOCUMENTOS → "generar_relacion"
+   El operador quiere el Excel + PDF de la relación de documentos del día
+   con el estado más reciente (folios, totales). Útil para imprimirla y
+   entregarla a contabilidad.
+   Frases típicas:
+     - "imprime la relación"
+     - "dame la relación de documentos"
+     - "necesito la relación del día"
+     - "manda la relación para imprimir"
+     - "regenera la relación"
+   Responde breve: "Genero la relación vigente, te paso los archivos."
+   accion = "generar_relacion".
+
+▸ E) CONSOLIDAR NOTAS DE REMISIÓN VIGENTES → "consolidar_notas"
+   El operador quiere un PDF único con TODAS las notas de los hospitales del
+   día en su versión más reciente (después de modificaciones y ajustes).
+   Útil para imprimir todas juntas cuando ya está cerrado el día.
+   Frases típicas:
+     - "imprime las notas corregidas"
+     - "dame todas las notas finales"
+     - "consolida las notas"
+     - "necesito las notas actualizadas en un solo PDF"
+     - "imprime las notas vigentes"
+     - "júntame las notas corregidas para imprimir"
+   Responde breve: "Consolido las notas vigentes, te paso el PDF."
+   accion = "consolidar_notas".
+
+▸ D) RECARGAR LISTA DE PRECIOS → "recargar_precios"
+   El operador acaba de editar Lista_Precios_EHMO.xlsx (agregó productos
+   nuevos o cambió precios) y necesita que el sistema lo refresque sin
+   reiniciar. Frases típicas:
+     - "recarga los precios"
+     - "actualiza la lista de precios"
+     - "ya edité el Excel de precios, recargalo"
+     - "refresca el catálogo"
+     - "agregué productos nuevos al Excel, refresca"
+   Responde breve: "Listo, recargo la lista." y devuelve accion="recargar_precios".
+
+▸ E) Diferencia clave para distinguir A vs B vs C:
+   - Producto FyV típico (jitomate, cebolla, frutas, verduras frescas)
+     + "agrégale / extra / suma" → modificacion_pedido (lote 5 normal)
+   - Producto NO-FyV (abarrote, lácteo, etc.)
+     + "extra / cubrir desabasto / no llegó abarrote" → extra_pedido
+   - "faltó / no hubo / no se entregó / no se surtió" → ajuste_entrega
+   - "cancela / quita / elimina":
+     · pre-surtido producto FyV → modificacion_pedido
+     · pre-surtido producto NO-FyV (extra) → extra_pedido (con operacion=cancelar)
+     · post-surtido → ajuste_entrega
+
+Si hay varios hospitales en un mensaje, usa el mismo nombre + sufijo "_multi"
+(modificacion_pedido_multi, extra_pedido_multi, ajuste_entrega_multi).
+
+═══════════════════════════════════════════════════════════════════════════
 FORMATO DE RESPUESTA (OBLIGATORIO)
 ═══════════════════════════════════════════════════════════════════════════
 Responde SIEMPRE con un JSON válido (sin markdown, sin texto antes/después):
 
 {
-  "intencion": "pedido_nuevo" | "modificacion" | "pregunta" | "saludo" | "otro",
-  "respuesta_para_ehmo": "<texto exacto que se enviará por WhatsApp a EHMO>",
-  "accion": "procesar_archivo" | "modificar_pedido" | "nada",
+  "intencion": "pedido_nuevo" |
+               "modificacion_pedido" | "modificacion_pedido_multi" |
+               "extra_pedido" | "extra_pedido_multi" |
+               "ajuste_entrega" | "ajuste_entrega_multi" |
+               "consolidar_notas" | "generar_relacion" |
+               "imprimir_nota_folio" |
+               "aceptar_folio" | "cancelar_folio" | "reactivar_folio" |
+               "reporte_control" | "recargar_precios" |
+               "pregunta" | "saludo" | "otro",
+  "respuesta_para_ehmo": "<texto que se enviará por WhatsApp>",
+  "accion": "procesar_archivo" | "aplicar_modificacion" |
+            "aplicar_extra" | "aplicar_ajuste" |
+            "consolidar_notas" | "generar_relacion" |
+            "imprimir_nota_folio" |
+            "aceptar_folio" | "cancelar_folio" | "reactivar_folio" |
+            "reporte_control" | "recargar_precios" | "nada",
   "datos": {
     // Para pedido_nuevo:
     "fecha_entrega": "YYYY-MM-DD" | null,
-    "hospitales_a_surtir": ["nombre1", "nombre2", ...],
-    "hospitales_excluidos_detectados": ["nombre", ...],   // de la regla 1
-    "hospitales_desconocidos": ["nombre", ...],           // ni regla 1 ni regla 1b
-    "productos_cambio_lote": ["alimento1", ...],          // movidos de Lote 1 a 5
-    "advertencias": ["string", ...]                       // cosas raras que viste
-    // Para modificacion: {"hospital": "...", "producto": "...", "cambio": "..."}
+    "hospitales_a_surtir": ["nombre1", ...],
+    "hospitales_excluidos_detectados": ["nombre", ...],
+    "hospitales_desconocidos": ["nombre", ...],
+    "productos_cambio_lote": ["alimento1", ...],
+    "advertencias": ["string", ...],
+
+    // Para modificacion_pedido (cliente cambia ANTES de surtir):
+    "hospital": "Hospital de la Mujer Comitán",
+    "modificaciones": [
+      {"operacion": "agregar",  "alimento": "jitomate guaje", "cantidad": 5},
+      {"operacion": "cancelar", "alimento": "papaya"},
+      {"operacion": "restar",   "alimento": "cebolla", "cantidad": 2}
+    ],
+    // Para modificacion_pedido_multi:
+    "modificaciones_por_hospital": [
+      {"hospital": "X", "modificaciones": [...]},
+      ...
+    ],
+
+    // Para ajuste_entrega (post-surtido, un solo hospital):
+    "hospital": "Hospital de la Mujer Comitán",
+    "ajustes": [
+      {"alimento": "jitomate", "cantidad_no_entregada": 5},
+      {"alimento": "papa blanca", "cantidad_no_entregada": "todo"}
+    ],
+    // Para ajuste_entrega_multi:
+    "ajustes_por_hospital": [
+      {"hospital": "X", "ajustes": [...]}
+    ],
+
+    // Para extra_pedido (pedido aparte para cubrir desabasto):
+    "extras": [
+      {"hospital": "Comitán", "alimento": "Chile ancho seco",
+       "cantidad": 50, "presentacion": "KG", "precio": 187.50,
+       "motivo": "Desabasto de abarrotes"},
+      {"hospital": "Margaritas", "alimento": "Azúcar morena",
+       "cantidad": 30, "motivo": "Cubrir abarrote no llegó"}
+    ]
   }
 }
+
+IMPORTANTE — DIFERENCIA ENTRE INTENCION Y ACCION:
+- "intencion" = qué TIPO de mensaje detectaste (puede ser ambiguo).
+- "accion" = qué debe EJECUTAR el sistema. Solo llénala con un valor distinto
+  de "nada" cuando tienes TODOS los datos para ejecutar.
+
+Ejemplos:
+  Usuario: "no se surtió mamey" (sin decir hospital)
+    → intencion="ajuste_entrega", accion="nada", respuesta="¿en qué hospital?"
+  Usuario: "no se surtió mamey en Mujer Comitán"
+    → intencion="ajuste_entrega", accion="aplicar_ajuste", datos completos.
+
+  Usuario: "agrégale jitomate" (sin cantidad ni hospital)
+    → intencion="modificacion_pedido", accion="nada", respuesta="¿cuánto y a qué hospital?"
+  Usuario: "agrégale 5kg jitomate a Comitán"
+    → intencion="modificacion_pedido", accion="aplicar_modificacion", datos completos.
+
+REGLA: si te falta cualquier dato (hospital, producto, cantidad), pon accion="nada"
+y pregunta amablemente. NUNCA inventes valores.
+
+Mapeo de acciones (cuando tienes TODOS los datos):
+- modificacion_pedido → accion="aplicar_modificacion" → regenera PDF imprimible y notas.
+- extra_pedido → accion="aplicar_extra" → genera PDFs APARTE (no toca el pedido normal).
+- ajuste_entrega → accion="aplicar_ajuste" → solo regenera nota corregida.
+- recargar_precios → accion="recargar_precios" → refresca el Excel de precios.
+
+Para extra_pedido, si EHMO no menciona precio, el sistema lo busca en la lista
+oficial automáticamente.
 """
 
 
@@ -188,6 +433,9 @@ def interpret_message(text: str | None = None, attachment_path: Path | None = No
     messages = conversation_history or []
     messages.append({"role": "user", "content": content})
 
+    log_event("ai", f"🤖 Llamando a Claude ({config.CLAUDE_MODEL})",
+              {"input_chars": sum(len(str(b)) for b in content), "history_turns": len(messages) - 1})
+    t0 = time.time()
     try:
         resp = client.messages.create(
             model=config.CLAUDE_MODEL,
@@ -196,7 +444,18 @@ def interpret_message(text: str | None = None, attachment_path: Path | None = No
             messages=messages,
         )
         raw = resp.content[0].text
+        elapsed = round((time.time() - t0) * 1000)
         log.info(f"Claude respondió ({len(raw)} chars, stop={resp.stop_reason})")
+        usage = getattr(resp, "usage", None)
+        meta = {
+            "elapsed_ms": elapsed,
+            "stop_reason": str(resp.stop_reason),
+            "output_chars": len(raw),
+        }
+        if usage:
+            meta["input_tokens"] = getattr(usage, "input_tokens", None)
+            meta["output_tokens"] = getattr(usage, "output_tokens", None)
+        log_event("ai", f"✓ Claude respondió en {elapsed}ms", meta)
 
         parsed = _parse_json_response(raw)
         if parsed:
@@ -211,6 +470,8 @@ def interpret_message(text: str | None = None, attachment_path: Path | None = No
         }
     except Exception as e:
         log.exception(f"Error llamando a Claude: {e}")
+        log_event("ai", f"❌ Error en Claude: {type(e).__name__}",
+                  {"error": str(e)[:200]}, level="error")
         # En dev mostramos el error real para depurar; en prod un mensaje amigable.
         if config.ENVIRONMENT == "development":
             err_msg = f"[Error AI] {type(e).__name__}: {e}"
@@ -250,11 +511,27 @@ def chat(phone: str, text: str, attachment_path: Path | None = None) -> dict:
     Carga el historial del contacto, llama a Claude, guarda el historial
     actualizado y devuelve el dict estructurado:
         {intencion, respuesta_para_ehmo, accion, datos}
+
+    Inyecta automáticamente el estado del pedido del día (si existe) para que
+    Claude pueda responder consultas tipo "qué hospitales pidieron mamey".
     """
     history = load_conversation(phone)
+
+    # Si hay estado del día procesado, inyectarlo como contexto en el mensaje
+    text_para_ai = text or ""
+    try:
+        from .estado_pedido import cargar_estado_mas_reciente, estado_a_contexto_ai
+        state, _ = cargar_estado_mas_reciente()
+        if state:
+            contexto = estado_a_contexto_ai(state)
+            if contexto:
+                text_para_ai = f"{contexto}\n\n[MENSAJE DEL OPERADOR]:\n{text or '(adjunto)'}"
+    except Exception as e:
+        log.warning(f"No se pudo inyectar contexto del estado: {e}")
+
     # Pasar copia para que interpret_message no mute la lista local
     result = interpret_message(
-        text=text,
+        text=text_para_ai,
         attachment_path=attachment_path,
         conversation_history=list(history),
     )
@@ -332,31 +609,131 @@ def _attachment_to_blocks(path: Path) -> list[dict]:
             "source": {"type": "base64", "media_type": "application/pdf", "data": data},
         }]
 
-    # Excel: convertir hoja BD (o primera) a texto pipe-separated
+    # Excel: en vez de mandar todas las filas (caro en tokens), generamos un
+    # resumen estructurado que le da a Claude lo que necesita para confirmar
+    # el pedido a alto nivel. El procesamiento real lo hace pedido_processor.py.
     if suffix in (".xlsx", ".xls"):
-        text = _excel_to_text(path)
+        text = _excel_to_summary(path)
         return [{"type": "text", "text": f"[Adjunto Excel: {path.name}]\n\n{text}"}]
 
     # Cualquier otro: mensaje de fallback
     return [{"type": "text", "text": f"[Adjunto no soportado: {path.name}]"}]
 
 
-def _excel_to_text(path: Path, max_rows: int = 1500) -> str:
-    """Lee la hoja BD (o la primera) y la devuelve como texto pipe-separated.
+# Keywords del cambio de lote (espejo de lo que tiene pedido_processor)
+_CAMBIO_KW_AI = [
+    "ajo en bulbo", "ajonjolí", "ajonjoli", "cacahuate tostado sin sal",
+    "canela en raja", "chile seco", "epazote", "flor de jamaica",
+    "nuez sin cascara", "nuez sin cáscara",
+    "orégano en hoja", "oregano en hoja", "perejil",
+    "te de limón", "te de limon", "té de limón",
+    "te de manzanilla", "té de manzanilla",
+    "te de yerbabuena", "té de yerbabuena",
+]
+_IGNORAR_KW_AI = ["almendra tostada", "palanqueta de cacahuate"]
 
-    Limita a max_rows para no reventar la ventana de contexto.
+
+def _excel_to_summary(path: Path) -> str:
+    """Resumen estructurado del Excel para Claude — barato en tokens.
+
+    En lugar de mandar las ~1000 filas crudas, manda un resumen analítico:
+    hojas presentes, columnas, total de filas, hospitales únicos, lotes
+    presentes con conteo, productos del cambio de lote detectados, y una
+    muestra pequeña. Suficiente para que Claude confirme el pedido a alto
+    nivel; el procesamiento detallado lo hace pedido_processor.py.
     """
     import pandas as pd  # import local: pandas tarda en cargar
+
+    try:
+        xl = pd.ExcelFile(path)
+        sheets = xl.sheet_names
+    except Exception as e:
+        return f"[No pude leer el Excel: {e}]"
+
+    parts = [f"Excel con {len(sheets)} hoja(s): {sheets}"]
+
+    # Buscar hoja BD; si no existe usar la primera
     try:
         df = pd.read_excel(path, sheet_name="BD")
-        sheet = "BD"
+        sheet_used = "BD"
     except Exception:
-        df = pd.read_excel(path)
-        sheet = "primera hoja"
-    total = len(df)
-    truncated = ""
-    if total > max_rows:
-        df = df.head(max_rows)
-        truncated = f"\n\n[NOTA: el Excel tiene {total} filas, solo se muestran las primeras {max_rows}]"
-    csv_text = df.to_csv(index=False, sep="|")
-    return f"Hoja: {sheet} ({total} filas, {len(df.columns)} columnas)\n\n{csv_text}{truncated}"
+        df = pd.read_excel(path, sheet_name=sheets[0])
+        sheet_used = sheets[0]
+
+    parts.append(f"\nAnalizo hoja: '{sheet_used}'")
+    parts.append(f"Filas totales: {len(df)}")
+    cols = [str(c) for c in df.columns]
+    parts.append(f"Columnas ({len(cols)}): {cols}")
+
+    cols_upper = [c.upper().strip() for c in cols]
+    has_unidad = any("UNIDAD" in c for c in cols_upper)
+    has_lote = any("LOTE" in c for c in cols_upper)
+    has_alimento = any("ALIMENTO" in c for c in cols_upper)
+
+    if not (has_unidad and has_lote and has_alimento):
+        parts.append("\n⚠️ NO parece formato BD estándar (faltan columnas UNIDAD/LOTE/ALIMENTO).")
+        parts.append("Pídele al cliente la hoja BD original con esas columnas.")
+        parts.append("\nMuestra de las primeras 10 filas:")
+        for _, row in df.head(10).iterrows():
+            parts.append(f"  {dict(row)}")
+        return "\n".join(parts)
+
+    parts.append("✓ Formato BD detectado.")
+
+    # Localizar las columnas reales
+    unidad_col = next(c for c in df.columns if "UNIDAD" in str(c).upper())
+    lote_col = next(c for c in df.columns if "LOTE" in str(c).upper())
+    alimento_col = next(c for c in df.columns if "ALIMENTO" in str(c).upper())
+
+    # Hospitales únicos
+    hospitales = sorted(df[unidad_col].dropna().astype(str).str.strip().unique())
+    parts.append(f"\nHospitales únicos en BD ({len(hospitales)}):")
+    for h in hospitales:
+        parts.append(f"  - {h}")
+
+    # Lotes presentes con conteo
+    lotes_series = df[lote_col].dropna().astype(str).str.strip()
+    lote_counts = lotes_series.value_counts().to_dict()
+    parts.append(f"\nLotes presentes ({len(lote_counts)}):")
+    for lote, count in sorted(lote_counts.items()):
+        parts.append(f"  - {lote!r}: {count} filas")
+
+    # Productos del cambio de lote (Lote 1 que matchean keywords FyV)
+    df_l1 = df[lotes_series.str.upper().str.startswith("1 ABARROTES")]
+    productos_l1 = df_l1[alimento_col].dropna().astype(str).str.strip().unique()
+    productos_cambio = sorted([
+        p for p in productos_l1
+        if any(kw in p.lower() for kw in _CAMBIO_KW_AI)
+        and not any(kw in p.lower() for kw in _IGNORAR_KW_AI)
+    ])
+    if productos_cambio:
+        parts.append(f"\nProductos del cambio Lote 1→5 detectados ({len(productos_cambio)}):")
+        for p in productos_cambio:
+            parts.append(f"  - {p}")
+
+    # Productos ignorados (almendra/palanqueta) — útil para que Claude lo mencione
+    productos_ignorados = sorted([
+        p for p in productos_l1
+        if any(kw in p.lower() for kw in _IGNORAR_KW_AI)
+    ])
+    if productos_ignorados:
+        parts.append(f"\nProductos en Lote 1 que NO son nuestros (ignorar): {productos_ignorados}")
+
+    # Fecha probable: si hay columna que parece fecha (datetime), úsala
+    fecha_col = None
+    for c in df.columns:
+        try:
+            if hasattr(c, "year"):  # datetime objeto
+                fecha_col = c
+                break
+        except Exception:
+            pass
+    if fecha_col is not None:
+        parts.append(f"\nColumna de fecha detectada: {fecha_col}")
+
+    # Muestra mínima (3 filas para contexto)
+    parts.append("\nMuestra de 3 filas (sample):")
+    for _, row in df.head(3).iterrows():
+        parts.append(f"  {dict(row)}")
+
+    return "\n".join(parts)

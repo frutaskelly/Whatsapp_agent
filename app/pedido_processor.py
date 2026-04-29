@@ -397,15 +397,19 @@ def procesar_pedido(input_excel: Path, output_dir: Path,
                   level="warn")
         df_l5 = df_l5[~df_l5["ALIMENTO"].apply(_is_ignorar)]
 
-    df_lote1 = df_incluido[df_incluido["LOTE"].apply(_es_lote_1)].copy()
-    df_cambio = df_lote1[df_lote1["ALIMENTO"].apply(_is_cambio)].copy()
+    # Detección de productos del cambio (CAMBIO_KW): se busca en CUALQUIER lote
+    # que no sea Lote 5, incluyendo lote vacío, "EXTRA ABARROTES", o cualquier
+    # categoría rara. EHMO a veces pone mermelada, perejil, etc. en lotes
+    # equivocados o sin lote — los rescatamos siempre que coincidan con CAMBIO_KW.
+    df_no_l5 = df_incluido[~df_incluido["LOTE"].apply(_es_lote_5)].copy()
+    df_cambio = df_no_l5[df_no_l5["ALIMENTO"].apply(_is_cambio)].copy()
     productos_cambio_nombres = sorted(df_cambio["ALIMENTO"].unique())
 
     df_bd_corr = df_raw.copy()
 
     def corregir_lote(row):
         if (_is_cambio(row["ALIMENTO"])
-                and _es_lote_1(row["LOTE"])
+                and not _es_lote_5(row["LOTE"])
                 and not _is_excluido(row["UNIDAD"])):
             return "5 FRUTAS Y VERDURAS "
         return row["LOTE"]

@@ -137,9 +137,10 @@ def reconstruir_estado(excel_bd: Path, fecha_iso: str, fecha_legible: str,
     df_l5 = df_incluido[df_incluido["LOTE"].apply(_es_lote_5)].copy()
     df_l5 = df_l5[~df_l5["ALIMENTO"].apply(_is_ignorar)]
 
-    # Cambio Lote 1 → 5 (productos FyV mal etiquetados como abarrote)
-    df_lote1 = df_incluido[df_incluido["LOTE"].apply(_es_lote_1)].copy()
-    df_cambio = df_lote1[df_lote1["ALIMENTO"].apply(_is_cambio)].copy()
+    # Cambio: productos FyV en CUALQUIER lote que no sea el 5 (incluye lote
+    # vacío, otros lotes mal etiquetados). Se rescatan si coinciden con CAMBIO_KW.
+    df_no_l5 = df_incluido[~df_incluido["LOTE"].apply(_es_lote_5)].copy()
+    df_cambio = df_no_l5[df_no_l5["ALIMENTO"].apply(_is_cambio)].copy()
     if excluir_de_cambio_lote:
         excluir_lower = [s.lower() for s in excluir_de_cambio_lote]
         df_cambio = df_cambio[

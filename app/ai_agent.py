@@ -724,12 +724,15 @@ def _excel_to_summary(path: Path) -> str:
     for lote, count in sorted(lote_counts.items()):
         parts.append(f"  - {lote!r}: {count} filas")
 
-    # Productos del cambio de lote (Lote 1 que matchean keywords FyV).
-    # Acepta lote con o sin prefijo numérico ("1 ABARROTES" o "ABARROTES").
-    df_l1 = df[lotes_series.str.upper().isin({"1 ABARROTES", "ABARROTES"})]
-    productos_l1 = df_l1[alimento_col].dropna().astype(str).str.strip().unique()
+    # Productos del cambio: cualquier fila que NO sea Lote 5 y cuyo alimento
+    # matchee CAMBIO_KW (incluye Lote 1, lote vacío, otros lotes con error de
+    # clasificación). EHMO a veces pone FyV en lotes equivocados o sin lote.
+    lotes_upper = lotes_series.str.upper()
+    no_es_l5 = ~lotes_upper.isin({"5 FRUTAS Y VERDURAS", "FRUTAS Y VERDURAS"})
+    df_no_l5_summary = df[no_es_l5]
+    productos_no_l5 = df_no_l5_summary[alimento_col].dropna().astype(str).str.strip().unique()
     productos_cambio = sorted([
-        p for p in productos_l1
+        p for p in productos_no_l5
         if any(kw in p.lower() for kw in _CAMBIO_KW_AI)
         and not any(kw in p.lower() for kw in _IGNORAR_KW_AI)
     ])
@@ -740,7 +743,7 @@ def _excel_to_summary(path: Path) -> str:
 
     # Productos ignorados (almendra/palanqueta) — útil para que Claude lo mencione
     productos_ignorados = sorted([
-        p for p in productos_l1
+        p for p in productos_no_l5
         if any(kw in p.lower() for kw in _IGNORAR_KW_AI)
     ])
     if productos_ignorados:

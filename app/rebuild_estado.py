@@ -23,6 +23,7 @@ import pandas as pd
 from .pedido_processor import (
     EXCLUIDOS_KW, CAMBIO_KW, IGNORAR_KW,
     _is_excluido, _is_cambio, _is_ignorar, _hospital_canonico,
+    _es_lote_5, _es_lote_1,
 )
 from .estado_pedido import guardar_estado, _state_file
 from .event_log import log_event
@@ -133,11 +134,11 @@ def reconstruir_estado(excel_bd: Path, fecha_iso: str, fecha_legible: str,
     df_incluido = df_raw[~df_raw["UNIDAD"].apply(_is_excluido)].copy()
 
     # Lote 5 (FyV) — quitar mal clasificados (salchicha, etc.)
-    df_l5 = df_incluido[df_incluido["LOTE"].str.upper().str.contains("5 FRUTAS", na=False)].copy()
+    df_l5 = df_incluido[df_incluido["LOTE"].apply(_es_lote_5)].copy()
     df_l5 = df_l5[~df_l5["ALIMENTO"].apply(_is_ignorar)]
 
     # Cambio Lote 1 → 5 (productos FyV mal etiquetados como abarrote)
-    df_lote1 = df_incluido[df_incluido["LOTE"].str.strip().str.upper().str.startswith("1 ABARROTES")].copy()
+    df_lote1 = df_incluido[df_incluido["LOTE"].apply(_es_lote_1)].copy()
     df_cambio = df_lote1[df_lote1["ALIMENTO"].apply(_is_cambio)].copy()
     if excluir_de_cambio_lote:
         excluir_lower = [s.lower() for s in excluir_de_cambio_lote]

@@ -724,8 +724,9 @@ def _excel_to_summary(path: Path) -> str:
     for lote, count in sorted(lote_counts.items()):
         parts.append(f"  - {lote!r}: {count} filas")
 
-    # Productos del cambio de lote (Lote 1 que matchean keywords FyV)
-    df_l1 = df[lotes_series.str.upper().str.startswith("1 ABARROTES")]
+    # Productos del cambio de lote (Lote 1 que matchean keywords FyV).
+    # Acepta lote con o sin prefijo numérico ("1 ABARROTES" o "ABARROTES").
+    df_l1 = df[lotes_series.str.upper().isin({"1 ABARROTES", "ABARROTES"})]
     productos_l1 = df_l1[alimento_col].dropna().astype(str).str.strip().unique()
     productos_cambio = sorted([
         p for p in productos_l1

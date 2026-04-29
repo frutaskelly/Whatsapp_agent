@@ -150,6 +150,20 @@ def _is_excluido(nombre):
     return any(kw in n for kw in EXCLUIDOS_KW)
 
 
+def _es_lote_5(lote_str) -> bool:
+    """True si el lote es Lote 5 (Frutas y Verduras), aceptando con o sin
+    prefijo numérico. EHMO a veces manda 'FRUTAS Y VERDURAS' sin el '5 ' inicial."""
+    s = str(lote_str or "").strip().upper()
+    return s in ("5 FRUTAS Y VERDURAS", "FRUTAS Y VERDURAS")
+
+
+def _es_lote_1(lote_str) -> bool:
+    """True si el lote es Lote 1 (Abarrotes), aceptando con o sin prefijo numérico.
+    Excluye 'EXTRA ABARROTES' que es otra cosa (insumos, no comestibles)."""
+    s = str(lote_str or "").strip().upper()
+    return s in ("1 ABARROTES", "ABARROTES")
+
+
 def _hospital_canonico(nombre: str) -> str | None:
     """Resuelve un nombre contra el catálogo de destinos (hospitales EHMO +
     comedores). Devuelve nombre canónico o None.
@@ -370,7 +384,7 @@ def procesar_pedido(input_excel: Path, output_dir: Path,
     # Hospitales no listados en la regla 1b — el operador debe confirmar
     hospitales_desconocidos = sorted([h for h in hospitales_si if _hospital_canonico(h) is None])
 
-    df_l5 = df_incluido[df_incluido["LOTE"].str.upper().str.contains("5 FRUTAS", na=False)].copy()
+    df_l5 = df_incluido[df_incluido["LOTE"].apply(_es_lote_5)].copy()
 
     # Filtrar productos mal clasificados como Lote 5 (ej. salchicha que debería
     # estar en Lote 4 EMBUTIDOS pero el BD del cliente a veces la pone en Lote 5).
@@ -383,7 +397,7 @@ def procesar_pedido(input_excel: Path, output_dir: Path,
                   level="warn")
         df_l5 = df_l5[~df_l5["ALIMENTO"].apply(_is_ignorar)]
 
-    df_lote1 = df_incluido[df_incluido["LOTE"].str.strip().str.upper().str.startswith("1 ABARROTES")].copy()
+    df_lote1 = df_incluido[df_incluido["LOTE"].apply(_es_lote_1)].copy()
     df_cambio = df_lote1[df_lote1["ALIMENTO"].apply(_is_cambio)].copy()
     productos_cambio_nombres = sorted(df_cambio["ALIMENTO"].unique())
 
@@ -391,7 +405,7 @@ def procesar_pedido(input_excel: Path, output_dir: Path,
 
     def corregir_lote(row):
         if (_is_cambio(row["ALIMENTO"])
-                and row["LOTE"].strip().upper().startswith("1 ABARROTES")
+                and _es_lote_1(row["LOTE"])
                 and not _is_excluido(row["UNIDAD"])):
             return "5 FRUTAS Y VERDURAS "
         return row["LOTE"]

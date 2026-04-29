@@ -28,6 +28,7 @@ from reportlab.platypus import (
 from reportlab.lib.enums import TA_RIGHT, TA_CENTER, TA_LEFT
 
 from . import config
+from .display_names import corregir_nombre, formatear_presentacion
 from .event_log import log_event
 from .pricing import buscar_precio
 
@@ -39,27 +40,54 @@ GRIS = colors.HexColor("#888888")
 GRIS_CLARO = colors.HexColor("#F4F4F4")
 
 # ─── Datos fiscales ───────────────────────────────────────────────────────────
+# Proveedor (mismo para ambos clientes)
 PROVEEDOR_NOMBRE = "CRISTIAN GERARDO ZARATE OROZCO"
 PROVEEDOR_RFC = "ZAOC830517RF9"
 
-# Domicilio fiscal del proveedor
+# Domicilio fiscal del proveedor (mismo)
 DOMICILIO_FISCAL = (
     "Calle: SIMBOLOS PATRIOS No. 107, "
     "Col. Paraje el Cerritos, CP: 71260, "
     "San Agustín de las Juntas, Oaxaca"
 )
 
-# Lugar de expedición
+# Lugar de expedición (mismo)
 LUGAR_EXPEDICION = (
     "Calle: LEGUMBRES 302 No. A, "
     "Col. ABASTOS, CP: 78390, "
     "SAN LUIS POTOSI, SAN LUIS POTOSI, MEXICO"
 )
 
-# Cliente
-CLIENTE_NOMBRE = "GRUPO OPERADOR DE ALIMENTOS EHMO"
-CLIENTE_RFC = "GOA180712SF5"
-CLIENTE_CP = "78390"
+# ─── Clientes (multi-cliente) ────────────────────────────────────────────────
+# Cada cliente tiene su propio:
+#   - nombre razón social, RFC, CP
+#   - cliente_id (para el campo "(N) NOMBRE")
+#   - tipo de línea descriptiva (DIF ENTREGA / COMEDORES HUMANITARIOS)
+#   - archivo de folio counter
+CLIENTES = {
+    "EHMO": {
+        "nombre": "GRUPO OPERADOR DE ALIMENTOS EHMO",
+        "rfc": "GOA180712SF5",
+        "cp": "78390",
+        "cliente_id": 1,
+        "linea_tipo": "ehmo",  # → "SEMANA N: DIF ENTREGA <DIA> ... EN: <hospital>"
+        "folio_file": "folio_counter.json",
+    },
+    "SUREÑA": {
+        "nombre": "GRUPO SUREÑA",
+        "rfc": "GSU110118GL0",
+        "cp": "78390",
+        "cliente_id": 2,
+        "linea_tipo": "comedores",  # → "SEMANA N: COMEDORES HUMANITARIOS ENTREGA <DIA> ... EN <comedor>."
+        "folio_file": "folio_counter_comedores.json",
+    },
+}
+
+# Constantes legacy (mantienen compatibilidad con código viejo). Apuntan al EHMO
+# por default. Para SUREÑA usar CLIENTES["SUREÑA"][...].
+CLIENTE_NOMBRE = CLIENTES["EHMO"]["nombre"]
+CLIENTE_RFC = CLIENTES["EHMO"]["rfc"]
+CLIENTE_CP = CLIENTES["EHMO"]["cp"]
 
 # Días de la semana en español
 DIAS_SEMANA = {
@@ -72,27 +100,40 @@ MESES_NOMBRE = {
     9: "SEPTIEMBRE", 10: "OCTUBRE", 11: "NOVIEMBRE", 12: "DICIEMBRE",
 }
 
-# ─── Folio secuencial persistente ─────────────────────────────────────────────
-_FOLIO_FILE = config.BASE_DIR / "storage" / "folio_counter.json"
+# ─── Folio secuencial persistente (por cliente) ──────────────────────────────
 _folio_lock = threading.Lock()
 FOLIO_INICIAL = 1  # arranca en 1; el operador puede editar el archivo si quiere otro inicio
 
 
-def _next_folio() -> str:
-    """Devuelve el siguiente folio secuencial padded a 10 dígitos."""
+def _folio_file(cliente: str = "EHMO") -> Path:
+    """Path al archivo de folio counter del cliente especificado."""
+    fname = CLIENTES.get(cliente, CLIENTES["EHMO"])["folio_file"]
+    return config.BASE_DIR / "storage" / fname
+
+
+def _next_folio(cliente: str = "EHMO") -> str:
+    """Devuelve el siguiente folio secuencial del cliente, padded a 10 dígitos.
+
+    Cada cliente tiene su propia secuencia (EHMO y SUREÑA son independientes).
+    """
     with _folio_lock:
-        _FOLIO_FILE.parent.mkdir(parents=True, exist_ok=True)
-        if _FOLIO_FILE.exists():
+        f = _folio_file(cliente)
+        f.parent.mkdir(parents=True, exist_ok=True)
+        if f.exists():
             try:
-                state = json.loads(_FOLIO_FILE.read_text())
+                state = json.loads(f.read_text())
                 current = int(state.get("next", FOLIO_INICIAL))
             except Exception:
                 current = FOLIO_INICIAL
         else:
             current = FOLIO_INICIAL
         next_val = current + 1
-        _FOLIO_FILE.write_text(json.dumps({"next": next_val}, indent=2))
+        f.write_text(json.dumps({"next": next_val}, indent=2))
         return f"{current:010d}"
+
+
+# Alias por compatibilidad con código viejo que llama _FOLIO_FILE directamente
+_FOLIO_FILE = _folio_file("EHMO")
 
 
 def _fecha_hoy_dmY() -> str:
@@ -111,11 +152,29 @@ def _semana_iso(fecha_entrega: datetime) -> int:
     return max(1, fecha_entrega.isocalendar()[1] + SEMANA_OFFSET_EHMO)
 
 
-def _linea_descriptiva(fecha_entrega: datetime, lugar: str) -> str:
-    """Genera la línea estilo 'SEMANA 17: DIF ENTREGA LUNES 27 DE ABRIL DE 2026 EN: <lugar>'."""
+def _linea_descriptiva(fecha_entrega: datetime, lugar: str,
+                        cliente: str = "EHMO") -> str:
+    """Genera la línea descriptiva según el tipo de cliente.
+
+    EHMO:      'SEMANA 17: DIF ENTREGA LUNES 27 DE ABRIL DE 2026 EN: <hospital>'
+    Comedores: 'SEMANA 17: COMEDORES HUMANITARIOS ENTREGA LUNES 27 DE ABRIL 2026 EN <comedor>.'
+    """
     semana = _semana_iso(fecha_entrega)
     dia_sem = DIAS_SEMANA[fecha_entrega.weekday()]
     mes = MESES_NOMBRE[fecha_entrega.month]
+    linea_tipo = CLIENTES.get(cliente, CLIENTES["EHMO"])["linea_tipo"]
+    # Nombre corto del lugar (sin prefijos "Comedor" / "Hospital ...") para el header
+    if linea_tipo == "comedores":
+        # Quitar prefijo "Comedor " si existe
+        nombre_corto = lugar.upper()
+        for prefix in ("COMEDOR ", "COMEDOR_"):
+            if nombre_corto.startswith(prefix):
+                nombre_corto = nombre_corto[len(prefix):]
+                break
+        return (f"SEMANA {semana}: COMEDORES HUMANITARIOS ENTREGA "
+                f"{dia_sem} {fecha_entrega.day} DE {mes} {fecha_entrega.year} "
+                f"EN {nombre_corto}.")
+    # default: EHMO
     return (f"SEMANA {semana}: DIF ENTREGA {dia_sem} {fecha_entrega.day} DE "
             f"{mes} DE {fecha_entrega.year} EN: {lugar.upper()}")
 
@@ -162,18 +221,27 @@ def _format_importe(value) -> str:
 def generar_notas_remision(df_fyv: pd.DataFrame, fecha_str: str, output_path: Path,
                            fecha_entrega: datetime | None = None,
                            tipo: str = "regular",
-                           folios_existentes: dict[str, str] | None = None) -> dict:
-    """Genera el PDF de notas con una nota por hospital en formato oficial.
+                           folios_existentes: dict[str, str] | None = None,
+                           cliente: str = "EHMO") -> dict:
+    """Genera el PDF de notas con una nota por destino en formato oficial.
 
     `fecha_entrega` puede pasarse explícita; si no, se infiere de fecha_str.
     `tipo` puede ser "regular" o "extras" (cambia la línea descriptiva y el banner).
-    `folios_existentes`: dict {hospital: folio_str} para reusar folios ya
-       asignados (regeneraciones). Si un hospital no está, se asigna folio nuevo.
-    Devuelve dict con stats incluyendo `folios` = mapping hospital→folio usado.
+    `folios_existentes`: dict {destino: folio_str} para reusar folios ya
+       asignados (regeneraciones). Si un destino no está, se asigna folio nuevo.
+    `cliente`: "EHMO" (default, hospitales DIF) o "SUREÑA" (comedores humanitarios).
+        Cambia datos fiscales del cliente, línea descriptiva, y secuencia de folios.
+    Devuelve dict con stats incluyendo `folios` = mapping destino→folio usado.
     """
     folios_existentes = folios_existentes or {}
+    # Datos fiscales del cliente activo
+    cli = CLIENTES.get(cliente, CLIENTES["EHMO"])
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    df_fyv = df_fyv.copy()
+    df_fyv["ALIMENTO"] = df_fyv["ALIMENTO"].apply(corregir_nombre)
+    df_fyv["PRESENTACION"] = df_fyv["PRESENTACION"].apply(formatear_presentacion)
 
     # Resolver fecha de entrega
     if fecha_entrega is None:
@@ -222,11 +290,12 @@ def generar_notas_remision(df_fyv: pd.DataFrame, fecha_str: str, output_path: Pa
                       level="warn")
             continue
 
-        # Reutilizar folio si ya existe para este hospital, sino tomar nuevo
+        # Reutilizar folio si ya existe para este destino, sino tomar nuevo
+        # del counter del cliente activo
         if hospital in folios_existentes:
             folio = folios_existentes[hospital]
         else:
-            folio = _next_folio()
+            folio = _next_folio(cliente)
         folios_usados[hospital] = folio
 
         # ─── HEADER: lugar exped (izq) | título + folio + fecha (der) ──────
@@ -261,8 +330,8 @@ def generar_notas_remision(df_fyv: pd.DataFrame, fecha_str: str, output_path: Pa
         elements.append(Spacer(1, 0.2 * cm))
         cliente_data = [[
             Paragraph(
-                f"<b>Cliente:</b> ( 1 ) {CLIENTE_NOMBRE} &nbsp;&nbsp;&nbsp; "
-                f"<b>RFC:</b> {CLIENTE_RFC} &nbsp;&nbsp;&nbsp; <b>CP:</b> {CLIENTE_CP}",
+                f"<b>Cliente:</b> ( {cli['cliente_id']} ) {cli['nombre']} &nbsp;&nbsp;&nbsp; "
+                f"<b>RFC:</b> {cli['rfc']} &nbsp;&nbsp;&nbsp; <b>CP:</b> {cli['cp']}",
                 style_label_b,
             ),
         ]]
@@ -289,7 +358,7 @@ def generar_notas_remision(df_fyv: pd.DataFrame, fecha_str: str, output_path: Pa
                 f"EN: {hospital.upper()}"
             )
         else:
-            linea_desc = _linea_descriptiva(fecha_entrega, hospital)
+            linea_desc = _linea_descriptiva(fecha_entrega, hospital, cliente=cliente)
         elements.append(Paragraph(linea_desc, style_descrip))
         elements.append(Spacer(1, 0.2 * cm))
 

@@ -20,6 +20,7 @@ from reportlab.platypus import (
     SimpleDocTemplate, Table, TableStyle, Paragraph, PageBreak, Spacer,
 )
 
+from .display_names import corregir_nombre
 from .event_log import log_event
 
 log = logging.getLogger(__name__)
@@ -41,6 +42,9 @@ def generar_pdf_pedido(df_fyv: pd.DataFrame, fecha_str: str, output_path: Path,
     """
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    df_fyv = df_fyv.copy()
+    df_fyv["ALIMENTO"] = df_fyv["ALIMENTO"].apply(corregir_nombre)
 
     doc = SimpleDocTemplate(
         str(output_path), pagesize=letter,

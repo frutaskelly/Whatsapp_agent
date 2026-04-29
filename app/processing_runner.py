@@ -237,6 +237,7 @@ def _aplicar_ajustes_desde_ai(phone: str, ai_result: dict) -> dict:
     from .ajuste_entrega import aplicar_ajustes
 
     datos = ai_result.get("datos", {}) or {}
+    fecha_iso = datos.get("fecha_iso") or None
 
     # Normalizar a una lista de (hospital, ajustes)
     grupos: list[tuple[str, list]] = []
@@ -252,12 +253,14 @@ def _aplicar_ajustes_desde_ai(phone: str, ai_result: dict) -> dict:
 
     resultados = []
     lines = ["📝 *Ajustes aplicados:*"]
+    if fecha_iso:
+        lines[0] = f"📝 *Ajustes aplicados* (día {fecha_iso}):"
     last_relacion = None
     last_relacion_pdf = None
     for hospital_input, ajustes in grupos:
         if not ajustes:
             continue
-        r = aplicar_ajustes(hospital_input, ajustes)
+        r = aplicar_ajustes(hospital_input, ajustes, fecha_iso=fecha_iso)
         resultados.append(r)
         if not r.get("ok"):
             lines.append(f"❌ {hospital_input}: {r.get('error', 'error')}")
@@ -300,6 +303,7 @@ def _aplicar_modificaciones_desde_ai(phone: str, ai_result: dict) -> dict:
     from .modificacion_pedido import aplicar_modificaciones, regenerar_archivos
 
     datos = ai_result.get("datos", {}) or {}
+    fecha_iso_pedida = datos.get("fecha_iso") or None
     grupos: list[tuple[str, list]] = []
     if "modificaciones_por_hospital" in datos:
         for g in datos["modificaciones_por_hospital"]:
@@ -313,11 +317,13 @@ def _aplicar_modificaciones_desde_ai(phone: str, ai_result: dict) -> dict:
 
     resultados = []
     lines = ["📦 *Modificaciones aplicadas al pedido:*"]
+    if fecha_iso_pedida:
+        lines[0] = f"📦 *Modificaciones aplicadas al pedido* (día {fecha_iso_pedida}):"
     fecha_iso = None
     for hospital_input, modificaciones in grupos:
         if not modificaciones:
             continue
-        r = aplicar_modificaciones(hospital_input, modificaciones)
+        r = aplicar_modificaciones(hospital_input, modificaciones, fecha_iso=fecha_iso_pedida)
         resultados.append(r)
         if not r.get("ok"):
             lines.append(f"❌ {hospital_input}: {r.get('error', 'error')}")

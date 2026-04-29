@@ -24,6 +24,7 @@ from reportlab.platypus import (
 )
 from reportlab.lib.enums import TA_CENTER
 
+from .display_names import corregir_nombre
 from .event_log import log_event
 
 log = logging.getLogger(__name__)
@@ -51,6 +52,9 @@ def generar_lista_compras_pdf(df_fyv: pd.DataFrame, fecha_str: str,
     """
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    df_fyv = df_fyv.copy()
+    df_fyv["ALIMENTO"] = df_fyv["ALIMENTO"].apply(corregir_nombre)
 
     # Consolidar
     compras = (df_fyv
@@ -157,6 +161,9 @@ def generar_lista_compras_xlsx(df_fyv: pd.DataFrame, fecha_str: str,
     """
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    df_fyv = df_fyv.copy()
+    df_fyv["ALIMENTO"] = df_fyv["ALIMENTO"].apply(corregir_nombre)
 
     compras = (df_fyv
                .groupby(["ALIMENTO", "PRESENTACION"])["CANTIDAD"]

@@ -32,6 +32,18 @@ completa de hospitales, sus folios, totales y productos con cantidades.
 USA ese contexto para responder consultas. NUNCA digas "no puedo leer Excel"
 o "necesito que me lo mandes de nuevo". El contexto YA tiene los datos.
 
+Si el operador menciona un día anterior o específico ("del 28", "ayer",
+"del 27 de abril", "2026-04-28", etc.), el sistema YA cargó el estado de
+ese día en el contexto inyectado. La línea final del bloque dice
+"Días disponibles: ... · contexto cargado: <fecha-iso>" — léela para
+saber qué día estás respondiendo. Si el usuario pide un día que NO está
+en "Días disponibles", dile claro: "no tengo el estado del día X
+guardado, solo tengo: <lista>".
+
+Para ACCIONES sobre un día específico (modificar / ajustar entrega / etc.):
+agrega `fecha_iso: "YYYY-MM-DD"` al objeto `datos`. Si el usuario no menciona
+día, omítelo y el sistema usará el más reciente.
+
 Ejemplos de consultas que debes responder con el contexto inyectado:
   - "¿qué hospitales pidieron mamey?" → busca el producto en cada hospital
   - "¿cuánto pidió Comitán de jitomate?" → toma la cantidad del hospital y producto
@@ -517,13 +529,27 @@ def chat(phone: str, text: str, attachment_path: Path | None = None) -> dict:
     """
     history = load_conversation(phone)
 
-    # Si hay estado del día procesado, inyectarlo como contexto en el mensaje
+    # Si hay estado del día procesado, inyectarlo como contexto en el mensaje.
+    # Si el operador menciona explícitamente otro día ("del 28", "ayer", etc.) y ese
+    # día tiene estado guardado, usamos ESE en lugar del más reciente.
     text_para_ai = text or ""
     try:
-        from .estado_pedido import cargar_estado_mas_reciente, estado_a_contexto_ai
-        state, _ = cargar_estado_mas_reciente()
+        from .estado_pedido import (
+            cargar_estado, cargar_estado_mas_reciente, estado_a_contexto_ai,
+            listar_fechas_disponibles, resolver_fecha_iso,
+        )
+        dias = listar_fechas_disponibles()
+        fecha_pedida = resolver_fecha_iso(text or "", dias_disponibles=dias)
+        if fecha_pedida:
+            state = cargar_estado(fecha_pedida)
+            fecha_iso_ctx = fecha_pedida
+        else:
+            state, fecha_iso_ctx = cargar_estado_mas_reciente()
         if state:
             contexto = estado_a_contexto_ai(state)
+            if dias:
+                contexto = (f"{contexto}\n\n[Días disponibles: {', '.join(dias)} · "
+                            f"contexto cargado: {fecha_iso_ctx}]")
             if contexto:
                 text_para_ai = f"{contexto}\n\n[MENSAJE DEL OPERADOR]:\n{text or '(adjunto)'}"
     except Exception as e:

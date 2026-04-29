@@ -83,6 +83,33 @@ HOSPITALES_CONOCIDOS_SI = {
     "Unidad de Atención a la Salud Mental San Agustín": ["salud mental san agustín", "salud mental san agustin", "salud mental"],
 }
 
+# ─── Cliente: COMEDORES (6) ───────────────────────────────────────────────────
+# Cliente independiente de EHMO. Compran lo mismo (frutas y verduras Lote 5)
+# pero el formato de pedido es distinto: vienen en libreta/foto/voz, no Excel.
+# Productos típicos: papas, cebollas, tomates, cilantro, chile jalapeño, chayotes,
+# zanahorias, melones, sandías, ajo entero, huevos. Cantidades variables día a día.
+# Confirmados por Cristian 2026-04-27.
+COMEDORES_SI = {
+    "Comedor Patria": ["patria", "comedor patria"],
+    "Comedor CCI": ["cci", "comedor cci"],
+    "Comedor 6 de Junio": ["6 de junio", "seis de junio", "comedor 6 de junio"],
+    "Comedor Shanka": ["shanka", "comedor shanka"],
+    "Comedor Jobo": ["jobo", "comedor jobo"],
+    "Comedor Copoya": ["copoya", "comedor copoya"],
+}
+
+# Catálogo unificado de destinos: hospitales EHMO + comedores. Se usa para
+# matching de nombres en pedidos, ajustes, modificaciones.
+DESTINOS_CONOCIDOS_SI = {**HOSPITALES_CONOCIDOS_SI, **COMEDORES_SI}
+
+
+def cliente_de(destino_canonico: str) -> str:
+    """Devuelve el cliente al que pertenece un destino: 'EHMO' o 'COMEDORES'."""
+    if destino_canonico in COMEDORES_SI:
+        return "COMEDORES"
+    return "EHMO"
+
+
 NOMBRES_CORTOS = {
     "Hospital Básico Comunitario Ángel Albino Corzo": "Angel Albino Corzo",
     "Hospital Básico Comunitario Chiapa de Corzo": "Chiapa de Corzo",
@@ -97,6 +124,13 @@ NOMBRES_CORTOS = {
     "Hospital General Tapachula": " General Tapachula",
     "Hospital Regional Dr. Rafael Pascasio Gamboa Tuxtla": "Rafael Pascasio Gamboa Tuxtla",
     "Unidad de Atención a la Salud Mental San Agustín": "Salud Mental San Agustín",
+    # Comedores
+    "Comedor Patria": "Patria",
+    "Comedor CCI": "CCI",
+    "Comedor 6 de Junio": "6 de Junio",
+    "Comedor Shanka": "Shanka",
+    "Comedor Jobo": "Jobo",
+    "Comedor Copoya": "Copoya",
 }
 
 MESES = {
@@ -117,10 +151,13 @@ def _is_excluido(nombre):
 
 
 def _hospital_canonico(nombre: str) -> str | None:
-    """Si el nombre coincide con un hospital conocido (regla 1b), devuelve el
-    nombre canónico. Si no es conocido (ni excluido), devuelve None."""
+    """Resuelve un nombre contra el catálogo de destinos (hospitales EHMO +
+    comedores). Devuelve nombre canónico o None.
+
+    Función nombrada "_hospital_canonico" por compatibilidad con código heredado;
+    en realidad ahora resuelve cualquier destino conocido (no solo hospitales)."""
     n = nombre.lower()
-    for canonical, fingerprints in HOSPITALES_CONOCIDOS_SI.items():
+    for canonical, fingerprints in DESTINOS_CONOCIDOS_SI.items():
         if any(fp in n for fp in fingerprints):
             return canonical
     return None
@@ -305,6 +342,9 @@ def procesar_pedido(input_excel: Path, output_dir: Path,
         log.warning(f"Hoja BD con menos de 6 columnas: {df_raw.shape[1]}")
         return None
 
+    if df_raw.shape[1] > 6:
+        log.info(f"BD tiene {df_raw.shape[1]} columnas; uso las primeras 6 e ignoro el resto: {list(df_raw.columns[6:])}")
+        df_raw = df_raw.iloc[:, :6]
     df_raw.columns = ["UNIDAD", "LOTE", "CBA", "ALIMENTO", "PRESENTACION", "CANTIDAD"]
     df_raw = df_raw.dropna(subset=["UNIDAD", "ALIMENTO"])
     df_raw["CANTIDAD"] = pd.to_numeric(df_raw["CANTIDAD"], errors="coerce").fillna(0)

@@ -137,6 +137,99 @@ def cargar_estado_mas_reciente() -> tuple[dict | None, str | None]:
         return None, fecha
 
 
+def listar_fechas_disponibles() -> list[str]:
+    """Devuelve las fechas-ISO que tienen estado guardado, descendente (más reciente primero)."""
+    files = sorted(_state_dir().glob("*.json"), reverse=True)
+    return [f.stem for f in files]
+
+
+_MES_NUM = {
+    "enero": 1, "febrero": 2, "marzo": 3, "abril": 4, "mayo": 5,
+    "junio": 6, "julio": 7, "agosto": 8, "septiembre": 9, "setiembre": 9,
+    "octubre": 10, "noviembre": 11, "diciembre": 12,
+}
+
+
+def resolver_fecha_iso(texto: str, dias_disponibles: list[str] | None = None,
+                        hoy: "datetime | None" = None) -> str | None:
+    """Intenta extraer una referencia de fecha del texto del operador.
+
+    Reconoce: 'hoy', 'ayer', 'antier', 'anteayer', 'del 28', 'el 27 de abril',
+    '27/04/2026', '2026-04-27'. Si encuentra varios candidatos, devuelve el
+    primero que coincida con un día disponible.
+
+    `dias_disponibles` (opcional): si se pasa, solo devuelve fechas que estén
+    en esa lista. Útil para no inventar días sin estado.
+    `hoy`: para tests; default es datetime.now().
+    """
+    import re
+    if not texto:
+        return None
+    hoy = hoy or datetime.now()
+    t = texto.lower()
+    candidatos: list[str] = []
+
+    # Palabras relativas
+    if re.search(r"\bhoy\b", t):
+        candidatos.append(hoy.strftime("%Y-%m-%d"))
+    if re.search(r"\bayer\b", t):
+        candidatos.append((hoy - pd.Timedelta(days=1)).strftime("%Y-%m-%d"))
+    if re.search(r"\bantier\b|\banteayer\b", t):
+        candidatos.append((hoy - pd.Timedelta(days=2)).strftime("%Y-%m-%d"))
+
+    # ISO directo: 2026-04-27
+    for m in re.finditer(r"\b(20\d{2})-(\d{1,2})-(\d{1,2})\b", t):
+        a, mm, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        try:
+            candidatos.append(datetime(a, mm, d).strftime("%Y-%m-%d"))
+        except ValueError:
+            pass
+
+    # DD/MM/YYYY o DD/MM
+    for m in re.finditer(r"\b(\d{1,2})/(\d{1,2})(?:/(\d{2,4}))?\b", t):
+        d, mm = int(m.group(1)), int(m.group(2))
+        a = int(m.group(3)) if m.group(3) else hoy.year
+        if a < 100:
+            a += 2000
+        try:
+            candidatos.append(datetime(a, mm, d).strftime("%Y-%m-%d"))
+        except ValueError:
+            pass
+
+    # "27 de abril" / "del 27 de abril" / "el 27 de abril de 2026"
+    for m in re.finditer(
+        r"(?:del?\s+|el\s+)?(\d{1,2})\s+de\s+(" + "|".join(_MES_NUM) + r")(?:\s+de\s+(\d{4}))?",
+        t,
+    ):
+        d = int(m.group(1))
+        mm = _MES_NUM[m.group(2)]
+        a = int(m.group(3)) if m.group(3) else hoy.year
+        try:
+            candidatos.append(datetime(a, mm, d).strftime("%Y-%m-%d"))
+        except ValueError:
+            pass
+
+    # "del 28" / "el 27" — solo número, asumir mes/año actual
+    if not candidatos:
+        for m in re.finditer(r"\b(?:del?|el)\s+(\d{1,2})\b", t):
+            d = int(m.group(1))
+            try:
+                candidatos.append(datetime(hoy.year, hoy.month, d).strftime("%Y-%m-%d"))
+            except ValueError:
+                pass
+
+    if not candidatos:
+        return None
+
+    # Filtrar por disponibilidad si se pidió
+    if dias_disponibles is not None:
+        for c in candidatos:
+            if c in dias_disponibles:
+                return c
+        return None
+    return candidatos[0]
+
+
 def estado_a_contexto_ai(state: dict) -> str:
     """Convierte el estado a un texto compacto que se le inyecta a Claude.
 

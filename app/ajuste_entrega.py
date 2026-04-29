@@ -89,11 +89,14 @@ def _encontrar_producto(nombre_input: str, productos: list[dict]) -> dict | None
 
 
 def aplicar_ajustes(hospital_input: str, ajustes: list[dict],
-                     fecha_iso: str | None = None) -> dict:
+                     fecha_iso: str | None = None,
+                     solo_estado: bool = False) -> dict:
     """Aplica ajustes de "no entregado" al estado y regenera notas.
 
     `ajustes` = [{"alimento": "jitomate", "cantidad_no_entregada": 5}, ...]
        cantidad_no_entregada puede ser numérica o "todo" (= eliminar).
+    `solo_estado=True`: actualiza JSON pero NO regenera PDFs ni sube a Drive.
+       Útil para replays históricos donde los PDFs originales ya existen.
 
     Devuelve:
       {
@@ -207,6 +210,19 @@ def aplicar_ajustes(hospital_input: str, ajustes: list[dict],
               f"ahorro ${(subtotal_anterior - info_hosp['subtotal']):,.2f}",
               {"hospital": hospital_resuelto, "cambios": cambios,
                "subtotal_anterior": subtotal_anterior, "subtotal_nuevo": info_hosp["subtotal"]})
+
+    if solo_estado:
+        return {
+            "ok": True,
+            "error": None,
+            "hospital_resuelto": hospital_resuelto,
+            "cambios": cambios,
+            "no_encontrados": no_encontrados,
+            "subtotal_anterior": subtotal_anterior,
+            "subtotal_nuevo": info_hosp["subtotal"],
+            "ahorro": round(subtotal_anterior - info_hosp["subtotal"], 2),
+            "drive_link": None,
+        }
 
     # Regenerar nota de remisión SOLO del hospital afectado (no las 12)
     df_actualizado = estado_a_dataframe(state)

@@ -37,6 +37,7 @@ storage/raw_webhooks/
 !storage/inbox/.gitkeep
 !storage/conversations/.gitkeep
 !storage/processed/.gitkeep
+!storage/keywords.json
 
 # IDEs
 .vscode/*

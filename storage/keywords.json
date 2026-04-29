@@ -1,0 +1,9 @@
+{
+  "_documentacion": "Listas extra que se SUMAN a las constantes hardcoded de pedido_processor.py. NO reemplazan; agregan. Después de editar este archivo, llama GET/POST a /api/reload-keywords (o reinicia el servicio) para que tome los cambios.",
+  "_uso_cambio_kw": "Productos FyV que el cliente etiqueta mal (en lote vacío, abarrotes, otros). Cualquier alimento cuyo nombre contenga estos substrings (lowercase) será rescatado al pedido FyV regardless del lote. Ejemplo: agregar 'cilantro fresco' aquí si EHMO empieza a mandarlo en lote 'EXTRA ABARROTES'.",
+  "cambio_kw": [],
+  "_uso_ignorar_kw": "Productos que NUNCA se incluyen en FyV aunque el cliente los marque como Lote 5 (ej. salchichas, embutidos mal clasificados). Substrings (lowercase).",
+  "ignorar_kw": [],
+  "_uso_excluidos_kw": "Hospitales adicionales que NO surte Frutas Kelly. Substrings (lowercase) que se buscan en el nombre del hospital. Los 6 ya hardcoded (Pichucalco, Palenque, Tila, Reforma, Yajalón, Amatán) siguen funcionando.",
+  "excluidos_kw": []
+}

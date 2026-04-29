@@ -84,6 +84,16 @@ def create_app():
             "ruta": config.LISTA_PRECIOS_PATH,
         })
 
+    @app.route("/api/reload-keywords", methods=["POST", "GET"])
+    def api_reload_keywords():
+        """Refresca las listas de keywords (cambio_kw / ignorar_kw / excluidos_kw)
+        desde storage/keywords.json. Útil después de agregar productos nuevos al
+        archivo sin necesidad de reiniciar Flask."""
+        from .pedido_processor import recargar_keywords
+        stats = recargar_keywords()
+        log_event("system", "🔄 Keywords extras recargadas", stats)
+        return jsonify({"ok": True, **stats})
+
     @app.route("/api/relacion")
     def api_relacion():
         """Relación por DÍA (default) o semanal.

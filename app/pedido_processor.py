@@ -12,16 +12,19 @@ con todas las hojas para Frutas y Verduras (Lote 5):
 
 Basado en el script de CONTEXTO_SISTEMA_PEDIDOS.md.
 """
+import json
 import logging
 import re
 import time
 from datetime import datetime
+from functools import lru_cache
 from pathlib import Path
 
 import pandas as pd
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
 
+from . import config
 from .event_log import log_event
 
 log = logging.getLogger(__name__)
@@ -55,6 +58,62 @@ IGNORAR_KW = [
     "salchicha",  # Lote 4 embutidos — no es nuestro (2026-04-27)
     # nota: "palanqueta de cacahuate" se movió a CAMBIO_KW (2026-04-27)
 ]
+
+
+# ─── Listas extensibles desde storage/keywords.json ──────────────────────────
+# Permite agregar nuevos productos al cambio / ignorar / hospitales excluidos
+# SIN modificar código. El archivo es opcional. Si existe, sus entradas se
+# concatenan con las constantes hardcoded de arriba (no las reemplaza).
+#
+# Estructura esperada (todos los campos opcionales):
+# {
+#   "cambio_kw": ["nuevo producto fyv"],
+#   "ignorar_kw": ["producto a ignorar"],
+#   "excluidos_kw": ["nuevo hospital a excluir"]
+# }
+def _keywords_file() -> Path:
+    return config.BASE_DIR / "storage" / "keywords.json"
+
+
+@lru_cache(maxsize=1)
+def _extra_keywords() -> dict:
+    p = _keywords_file()
+    if not p.exists():
+        return {}
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            return {}
+        return data
+    except Exception as e:
+        log.warning(f"No se pudo leer {p.name}: {e} — usando solo defaults")
+        return {}
+
+
+def recargar_keywords() -> dict:
+    """Limpia el cache de keywords.json. Útil para aplicar cambios sin reiniciar."""
+    _extra_keywords.cache_clear()
+    extra = _extra_keywords()
+    return {
+        "cambio_kw_extra": len(extra.get("cambio_kw", [])),
+        "ignorar_kw_extra": len(extra.get("ignorar_kw", [])),
+        "excluidos_kw_extra": len(extra.get("excluidos_kw", [])),
+    }
+
+
+def _all_cambio_kw() -> list[str]:
+    extra = _extra_keywords().get("cambio_kw", []) or []
+    return CAMBIO_KW + [str(k).lower() for k in extra]
+
+
+def _all_ignorar_kw() -> list[str]:
+    extra = _extra_keywords().get("ignorar_kw", []) or []
+    return IGNORAR_KW + [str(k).lower() for k in extra]
+
+
+def _all_excluidos_kw() -> list[str]:
+    extra = _extra_keywords().get("excluidos_kw", []) or []
+    return EXCLUIDOS_KW + [str(k).lower() for k in extra]
 
 # Catálogo de hospitales conocidos que SÍ surtimos. Mapea nombre canónico → lista
 # de fingerprints (substrings case-insensitive) que identifican el hospital aunque
@@ -147,7 +206,7 @@ GRIS = "BBBBBB"
 
 def _is_excluido(nombre):
     n = str(nombre).lower()
-    return any(kw in n for kw in EXCLUIDOS_KW)
+    return any(kw in n for kw in _all_excluidos_kw())
 
 
 def _es_lote_5(lote_str) -> bool:
@@ -181,14 +240,14 @@ def _is_ignorar(alimento) -> bool:
     """True si el producto debe ser excluido del FyV aunque venga marcado como
     Lote 5 en el BD (ej. salchicha mal clasificada — pertenece a Lote 4 embutidos)."""
     a = str(alimento).lower()
-    return any(kw in a for kw in IGNORAR_KW)
+    return any(kw in a for kw in _all_ignorar_kw())
 
 
 def _is_cambio(alimento):
     a = str(alimento).lower()
-    if any(kw in a for kw in IGNORAR_KW):
+    if any(kw in a for kw in _all_ignorar_kw()):
         return False
-    return any(kw in a for kw in CAMBIO_KW)
+    return any(kw in a for kw in _all_cambio_kw())
 
 
 def _get_nombre_corto(nombre):

@@ -110,7 +110,8 @@ def procesar_pedido_libreta(destinos: list[dict],
                              fecha_entrega_legible: str,
                              output_dir: Path | None = None,
                              agente: dict | None = None,
-                             subtitulo: str = "Comedores SUREÑA · para surtir") -> dict:
+                             subtitulo: str = "Comedores SUREÑA · para surtir",
+                             force_overwrite: bool = False) -> dict:
     """Genera documentos de surtido (sin precios) para un pedido de libreta.
 
     Args:
@@ -134,6 +135,42 @@ def procesar_pedido_libreta(destinos: list[dict],
                   f"⚠️ Libreta sin productos válidos para procesar ({fecha_entrega_iso})",
                   level="warn")
         return {"error": "sin productos válidos en la libreta"}
+
+    # SALVAGUARDA: si ya existe un state para esta fecha con requires_pesos=True
+    # (esperando pesos pendientes), NO sobrescribir — probablemente la nueva
+    # foto es un reporte de pesos mal interpretado como pedido nuevo.
+    if not force_overwrite:
+        from .estado_pedido import cargar_estado
+        state_existente = cargar_estado(fecha_entrega_iso)
+        if state_existente and state_existente.get("requires_pesos"):
+            n_existente = sum(1 for h in state_existente.get("hospitales", {}).values()
+                                for p in h.get("productos", []) if p.get("cantidad", 0) > 0)
+            n_nuevo = len(df_fyv)
+            msg = (
+                f"⚠️ Ya existe un pedido del {fecha_entrega_iso} con {n_existente} "
+                f"producto-líneas esperando pesos. La foto que subiste tiene solo "
+                f"{n_nuevo} producto-línea(s), parece un reporte de pesos "
+                f"(no un pedido nuevo).\n\n"
+                f"Si efectivamente son los pesos a actualizar, repórtalos como "
+                f"'pesos del Comedor X: producto Y kg' o como foto y se aplicarán "
+                f"al estado existente.\n\n"
+                f"Si quieres SOBRESCRIBIR el pedido existente con uno nuevo "
+                f"(perderás lo registrado), responde: \"reprocesa el {fecha_entrega_legible} "
+                f"desde cero, sí estoy seguro\"."
+            )
+            log_event("processor",
+                      f"🛡️ procesar_libreta bloqueado para {fecha_entrega_iso} "
+                      f"(state existente con requires_pesos)",
+                      {"fecha_iso": fecha_entrega_iso,
+                       "productos_existentes": n_existente,
+                       "productos_nuevos": n_nuevo}, level="warn")
+            return {
+                "error": "estado_existente_con_pesos_pendientes",
+                "mensaje_para_operador": msg,
+                "fecha_iso": fecha_entrega_iso,
+                "productos_existentes": n_existente,
+                "productos_nuevos": n_nuevo,
+            }
 
     n_destinos = df_fyv["UNIDAD"].nunique()
     n_lineas = len(df_fyv)

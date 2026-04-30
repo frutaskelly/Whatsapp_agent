@@ -511,13 +511,17 @@ def _procesar_libreta_desde_ai(phone: str, ai_result: dict,
                     "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
         fecha_legible = f"{d.day} de {meses_es[d.month - 1]}"
 
-    # Disparar el procesador
+    # Disparar el procesador. Si Claude marcó datos.confirmar_reproceso=true
+    # (operador escribió "reprocesa el X desde cero, sí estoy seguro"),
+    # forzar sobrescritura del state existente.
+    force_overwrite = bool(datos.get("confirmar_reproceso"))
     try:
         result = procesar_pedido_libreta(
             destinos=destinos,
             fecha_entrega_iso=fecha_iso,
             fecha_entrega_legible=fecha_legible,
             agente=agente,
+            force_overwrite=force_overwrite,
         )
     except Exception as e:
         log.exception(f"Error en procesar_pedido_libreta: {e}")
@@ -525,6 +529,15 @@ def _procesar_libreta_desde_ai(phone: str, ai_result: dict,
         message_log.log_message("out", phone, "text", msg,
                                  {"libreta_error": str(e)})
         return {"error": str(e)}
+
+    # Si la salvaguarda bloqueó por state existente con pesos pendientes,
+    # devolver el mensaje explicativo al operador.
+    if result.get("error") == "estado_existente_con_pesos_pendientes":
+        msg = result["mensaje_para_operador"]
+        message_log.log_message("out", phone, "text", msg,
+                                 {"libreta_blocked": True,
+                                  "fecha_iso": result.get("fecha_iso")})
+        return {"blocked": True, "fecha_iso": result.get("fecha_iso")}
 
     if result.get("error"):
         msg = f"⚠️ {result['error']}"

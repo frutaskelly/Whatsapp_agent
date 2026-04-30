@@ -1,0 +1,404 @@
+{
+  "fecha": "2026-04-25",
+  "fecha_legible": "25 de abril",
+  "creado": "2026-04-29T23:27:44",
+  "ultima_modificacion": "2026-04-30T06:11:55",
+  "hospitales": {
+    "Comedor 6 de Junio": {
+      "folio_remision": "0000000008",
+      "estado": "modificado",
+      "estado_actualizado": "2026-04-30T06:11:55",
+      "productos": [
+        {
+          "alimento": "Cebolla",
+          "presentacion": "Kilo",
+          "cantidad": 10.0,
+          "cantidad_original": 10.0,
+          "precio_unitario": 15.5,
+          "importe": 155.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Chile jalapeño",
+          "presentacion": "Kilo",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 71.5,
+          "importe": 143.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Cilantro",
+          "presentacion": "Kilo",
+          "cantidad": 2.05,
+          "cantidad_original": 15.0,
+          "precio_unitario": 39.5,
+          "importe": 80.97,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Papas",
+          "presentacion": "Kilo",
+          "cantidad": 35.0,
+          "cantidad_original": 35.0,
+          "precio_unitario": 40.5,
+          "importe": 1417.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Tomate verde",
+          "presentacion": "Kilo",
+          "cantidad": 20.0,
+          "cantidad_original": 20.0,
+          "precio_unitario": 61.5,
+          "importe": 1230.0,
+          "tiene_precio": true
+        }
+      ],
+      "subtotal": 3026.47,
+      "total": 3026.47
+    },
+    "Comedor CCI": {
+      "folio_remision": "0000000009",
+      "estado": "modificado",
+      "estado_actualizado": "2026-04-30T06:11:55",
+      "productos": [
+        {
+          "alimento": "Cebolla",
+          "presentacion": "Kilo",
+          "cantidad": 10.0,
+          "cantidad_original": 10.0,
+          "precio_unitario": 15.5,
+          "importe": 155.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Chile jalapeño",
+          "presentacion": "Kilo",
+          "cantidad": 4.0,
+          "cantidad_original": 4.0,
+          "precio_unitario": 71.5,
+          "importe": 286.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Cilantro",
+          "presentacion": "Kilo",
+          "cantidad": 4.6,
+          "cantidad_original": 25.0,
+          "precio_unitario": 39.5,
+          "importe": 181.7,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Papas",
+          "presentacion": "Kilo",
+          "cantidad": 60.0,
+          "cantidad_original": 60.0,
+          "precio_unitario": 40.5,
+          "importe": 2430.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Tomate verde",
+          "presentacion": "Kilo",
+          "cantidad": 30.0,
+          "cantidad_original": 30.0,
+          "precio_unitario": 61.5,
+          "importe": 1845.0,
+          "tiene_precio": true
+        }
+      ],
+      "subtotal": 4897.7,
+      "total": 4897.7
+    },
+    "Comedor Copoya": {
+      "folio_remision": "0000000010",
+      "estado": "modificado",
+      "estado_actualizado": "2026-04-30T06:11:55",
+      "productos": [
+        {
+          "alimento": "Cebolla",
+          "presentacion": "Kilo",
+          "cantidad": 5.0,
+          "cantidad_original": 5.0,
+          "precio_unitario": 15.5,
+          "importe": 77.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Chile jalapeño",
+          "presentacion": "Kilo",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 71.5,
+          "importe": 143.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Cilantro",
+          "presentacion": "Kilo",
+          "cantidad": 2.08,
+          "cantidad_original": 15.0,
+          "precio_unitario": 39.5,
+          "importe": 82.16,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Papas",
+          "presentacion": "Kilo",
+          "cantidad": 25.0,
+          "cantidad_original": 25.0,
+          "precio_unitario": 40.5,
+          "importe": 1012.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Tomate verde",
+          "presentacion": "Kilo",
+          "cantidad": 20.0,
+          "cantidad_original": 20.0,
+          "precio_unitario": 61.5,
+          "importe": 1230.0,
+          "tiene_precio": true
+        }
+      ],
+      "subtotal": 2545.16,
+      "total": 2545.16
+    },
+    "Comedor Jobo": {
+      "folio_remision": "0000000011",
+      "estado": "modificado",
+      "estado_actualizado": "2026-04-30T06:11:55",
+      "productos": [
+        {
+          "alimento": "Cebolla",
+          "presentacion": "Kilo",
+          "cantidad": 5.0,
+          "cantidad_original": 5.0,
+          "precio_unitario": 15.5,
+          "importe": 77.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Chile jalapeño",
+          "presentacion": "Kilo",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 71.5,
+          "importe": 143.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Cilantro",
+          "presentacion": "Kilo",
+          "cantidad": 3.2,
+          "cantidad_original": 20.0,
+          "precio_unitario": 39.5,
+          "importe": 126.4,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Papas",
+          "presentacion": "Kilo",
+          "cantidad": 30.0,
+          "cantidad_original": 30.0,
+          "precio_unitario": 40.5,
+          "importe": 1215.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Tomate verde",
+          "presentacion": "Kilo",
+          "cantidad": 20.0,
+          "cantidad_original": 20.0,
+          "precio_unitario": 61.5,
+          "importe": 1230.0,
+          "tiene_precio": true
+        }
+      ],
+      "subtotal": 2791.9,
+      "total": 2791.9
+    },
+    "Comedor Patria": {
+      "folio_remision": "0000000012",
+      "estado": "modificado",
+      "estado_actualizado": "2026-04-30T06:11:55",
+      "productos": [
+        {
+          "alimento": "Cebolla",
+          "presentacion": "Kilo",
+          "cantidad": 10.0,
+          "cantidad_original": 10.0,
+          "precio_unitario": 15.5,
+          "importe": 155.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Chile jalapeño",
+          "presentacion": "Kilo",
+          "cantidad": 3.0,
+          "cantidad_original": 3.0,
+          "precio_unitario": 71.5,
+          "importe": 214.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Cilantro",
+          "presentacion": "Kilo",
+          "cantidad": 2.15,
+          "cantidad_original": 15.0,
+          "precio_unitario": 39.5,
+          "importe": 84.92,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Papas",
+          "presentacion": "Kilo",
+          "cantidad": 40.0,
+          "cantidad_original": 40.0,
+          "precio_unitario": 40.5,
+          "importe": 1620.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Tomate verde",
+          "presentacion": "Kilo",
+          "cantidad": 20.0,
+          "cantidad_original": 20.0,
+          "precio_unitario": 61.5,
+          "importe": 1230.0,
+          "tiene_precio": true
+        }
+      ],
+      "subtotal": 3304.42,
+      "total": 3304.42
+    },
+    "Comedor Shanka": {
+      "folio_remision": "0000000013",
+      "estado": "modificado",
+      "estado_actualizado": "2026-04-30T06:11:55",
+      "productos": [
+        {
+          "alimento": "Cebolla",
+          "presentacion": "Kilo",
+          "cantidad": 10.0,
+          "cantidad_original": 10.0,
+          "precio_unitario": 15.5,
+          "importe": 155.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Chile jalapeño",
+          "presentacion": "Kilo",
+          "cantidad": 3.0,
+          "cantidad_original": 3.0,
+          "precio_unitario": 71.5,
+          "importe": 214.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Cilantro",
+          "presentacion": "Kilo",
+          "cantidad": 3.3,
+          "cantidad_original": 20.0,
+          "precio_unitario": 39.5,
+          "importe": 130.35,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Papas",
+          "presentacion": "Kilo",
+          "cantidad": 50.0,
+          "cantidad_original": 50.0,
+          "precio_unitario": 40.5,
+          "importe": 2025.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Tomate verde",
+          "presentacion": "Kilo",
+          "cantidad": 20.0,
+          "cantidad_original": 20.0,
+          "precio_unitario": 61.5,
+          "importe": 1230.0,
+          "tiene_precio": true
+        }
+      ],
+      "subtotal": 3754.85,
+      "total": 3754.85
+    }
+  },
+  "ajustes": [
+    {
+      "timestamp": "2026-04-30T06:11:55",
+      "tipo": "registrar_pesos",
+      "cambios": [
+        {
+          "destino": "Comedor Patria",
+          "alimento": "Cilantro",
+          "cantidad_anterior": 15.0,
+          "presentacion_anterior": "Manojo",
+          "kg_aplicado": 2.15,
+          "precio_unitario": 39.5,
+          "importe_nuevo": 84.92,
+          "tiene_precio": true
+        },
+        {
+          "destino": "Comedor CCI",
+          "alimento": "Cilantro",
+          "cantidad_anterior": 25.0,
+          "presentacion_anterior": "Manojo",
+          "kg_aplicado": 4.6,
+          "precio_unitario": 39.5,
+          "importe_nuevo": 181.7,
+          "tiene_precio": true
+        },
+        {
+          "destino": "Comedor 6 de Junio",
+          "alimento": "Cilantro",
+          "cantidad_anterior": 15.0,
+          "presentacion_anterior": "Manojo",
+          "kg_aplicado": 2.05,
+          "precio_unitario": 39.5,
+          "importe_nuevo": 80.97,
+          "tiene_precio": true
+        },
+        {
+          "destino": "Comedor Shanka",
+          "alimento": "Cilantro",
+          "cantidad_anterior": 20.0,
+          "presentacion_anterior": "Manojo",
+          "kg_aplicado": 3.3,
+          "precio_unitario": 39.5,
+          "importe_nuevo": 130.35,
+          "tiene_precio": true
+        },
+        {
+          "destino": "Comedor Jobo",
+          "alimento": "Cilantro",
+          "cantidad_anterior": 20.0,
+          "presentacion_anterior": "Manojo",
+          "kg_aplicado": 3.2,
+          "precio_unitario": 39.5,
+          "importe_nuevo": 126.4,
+          "tiene_precio": true
+        },
+        {
+          "destino": "Comedor Copoya",
+          "alimento": "Cilantro",
+          "cantidad_anterior": 15.0,
+          "presentacion_anterior": "Manojo",
+          "kg_aplicado": 2.08,
+          "precio_unitario": 39.5,
+          "importe_nuevo": 82.16,
+          "tiene_precio": true
+        }
+      ],
+      "no_encontrados": []
+    }
+  ],
+  "fuente": "libreta",
+  "agente_id": "surena_comedores",
+  "creado_de_libreta": "2026-04-29T23:27:44"
+}

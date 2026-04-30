@@ -243,8 +243,12 @@ def _destino_pertenece_al_agente(destino: str, agente_tipo: str | None) -> bool:
     """Decide si un destino del state es relevante para el agente activo.
 
     - tipo='comedores': solo destinos cuyo nombre empieza con 'Comedor '
-    - tipo='hospitales' o 'dif': destinos que empiezan con 'Hospital ',
-      'Unidad ', o son 'ALMACÉN EHMO' (extras al almacén central de EHMO)
+    - tipo='hospitales': hospitales del programa estatal/IMSS (Hospital X,
+      Unidad X) + ALMACÉN EHMO (extras al almacén central)
+    - tipo='dif': destinos del programa DIF — identificados por contener
+      'DIF' en el nombre, o iniciar con 'Centro DIF', 'Comedor DIF',
+      'Casa DIF', etc. SCOPE PENDIENTE de definir destinos exactos con
+      el operador.
     - tipo=None u otro: no filtra (compat hacia atrás)
     """
     if not agente_tipo:
@@ -252,9 +256,14 @@ def _destino_pertenece_al_agente(destino: str, agente_tipo: str | None) -> bool:
     n = (destino or "").strip().lower()
     if agente_tipo == "comedores":
         return n.startswith("comedor ") or n == "almacen sureña" or n == "almacén sureña"
-    if agente_tipo in ("hospitales", "dif"):
+    if agente_tipo == "hospitales":
         return (n.startswith("hospital ") or n.startswith("unidad ")
                 or n == "almacén ehmo" or n == "almacen ehmo")
+    if agente_tipo == "dif":
+        # DIF: destinos que mencionen "DIF" explícitamente. Mientras no se
+        # defina el catálogo exacto, este filtro será restrictivo y no
+        # mostrará hospitales ni comedores.
+        return ("dif" in n) or n.startswith("centro dif") or n.startswith("casa dif")
     return True
 
 

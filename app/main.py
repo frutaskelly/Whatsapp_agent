@@ -201,22 +201,20 @@ def create_app():
 
         def _hint_fecha_desde_archivo(original_name: str | None) -> str:
             """Construye un hint para el AI con la fecha visible en el nombre
-            de archivo y la fecha de entrega típica (foto + 1 día)."""
+            del archivo. Solo INFO contextual — nunca inferir fecha de entrega.
+            El AI SIEMPRE debe preguntar la fecha al operador.
+            """
             if not original_name:
                 return ""
             partes = [f"[Archivo adjunto: {original_name}]"]
             f = fecha_de_filename(original_name)
             if f:
-                try:
-                    d = _date.fromisoformat(f)
-                    sig = (d + _td(days=1)).isoformat()
-                    partes.append(
-                        f"[FECHA EN NOMBRE DE ARCHIVO: {f}. "
-                        f"Si es foto de libreta de pedido, la entrega TÍPICA es al día siguiente: {sig}. "
-                        f"Sugiérela al confirmar con el operador, pero no la asumas como definitiva.]"
-                    )
-                except Exception:
-                    pass
+                partes.append(
+                    f"[INFO: el nombre del archivo contiene la fecha {f}, pero "
+                    f"esto NO indica la fecha de entrega. NUNCA asumas una fecha "
+                    f"basándote en el filename — siempre pregunta explícitamente "
+                    f"al operador a qué día corresponde la información.]"
+                )
             return "\n".join(partes)
 
         def _handle_one(uploaded, file_idx: int, total: int) -> dict:

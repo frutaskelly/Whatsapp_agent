@@ -13,6 +13,8 @@
     display: flex;
     flex-direction: column;
   }
+
+  /* ─── Header ─────────────────────────────────────────────────── */
   header {
     background: #202c33;
     padding: 12px 20px;
@@ -24,8 +26,49 @@
   header h1 { font-size: 16px; margin: 0; font-weight: 600; }
   header .meta { font-size: 11px; color: #8696a0; }
   header .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #00a884; margin-right: 6px; }
-  .layout { flex: 1; display: flex; min-height: 0; }
-  main {
+
+  /* ─── Layout: sidebar + content ──────────────────────────────── */
+  .shell { flex: 1; display: flex; min-height: 0; }
+  nav.sidebar {
+    width: 220px;
+    background: #111b21;
+    border-right: 1px solid #2a3942;
+    padding: 16px 0;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+  nav.sidebar .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 18px;
+    color: #aebac1;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    font-size: 14px;
+    user-select: none;
+  }
+  nav.sidebar .nav-item:hover { background: #2a3942; color: #e9edef; }
+  nav.sidebar .nav-item.active {
+    background: #2a3942;
+    color: #e9edef;
+    border-left-color: #00a884;
+  }
+  nav.sidebar .nav-item .ico { font-size: 18px; width: 22px; text-align: center; }
+  nav.sidebar .group-label {
+    padding: 12px 18px 4px;
+    font-size: 10px;
+    color: #56666f;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+  .content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .view { display: none; flex: 1; min-height: 0; flex-direction: column; }
+  .view.active { display: flex; }
+
+  /* ─── Vista Sandbox (la original) ────────────────────────────── */
+  .sandbox-layout { flex: 1; display: flex; min-height: 0; }
+  .sandbox-main {
     flex: 1.4;
     overflow-y: auto;
     padding: 16px 20px;
@@ -67,7 +110,7 @@
     margin-right: 4px;
     font-weight: bold;
   }
-  .event .msg { color: #d8e2e8; }
+  .event .msg-text { color: #d8e2e8; }
   .event .meta-line { color: #56666f; font-size: 10px; margin-top: 2px; word-wrap: break-word; }
   .event.cat-webhook   { border-left-color: #00a884; }
   .event.cat-webhook   .cat { background: #00a884; color: white; }
@@ -85,9 +128,9 @@
   .event.level-error { background: rgba(220,53,69,0.10); border-left-color: #dc3545; }
   .feed { max-width: 760px; margin: 0 auto; }
   .empty { text-align: center; color: #8696a0; padding: 60px 20px; font-size: 14px; }
-  .msg { display: flex; margin: 6px 0; }
-  .msg.in { justify-content: flex-start; }
-  .msg.out { justify-content: flex-end; }
+  .msg-row { display: flex; margin: 6px 0; }
+  .msg-row.in { justify-content: flex-start; }
+  .msg-row.out { justify-content: flex-end; }
   .bubble-wrap { max-width: 70%; }
   .bubble {
     padding: 8px 12px;
@@ -99,13 +142,13 @@
   }
   .in .bubble { background: #202c33; border-top-left-radius: 0; }
   .out .bubble { background: #005c4b; border-top-right-radius: 0; }
-  .meta {
+  .bubble-meta {
     font-size: 10px;
     color: #8696a0;
     margin-top: 3px;
   }
-  .in .meta { text-align: left; }
-  .out .meta { text-align: right; }
+  .in .bubble-meta { text-align: left; }
+  .out .bubble-meta { text-align: right; }
   .badge {
     display: inline-block;
     padding: 1px 6px;
@@ -178,6 +221,101 @@
     text-align: center;
   }
   .err { background: #5c1f1f !important; }
+
+  /* ─── Vista Dashboard (calendario / días) ────────────────────── */
+  .dashboard-scroll { flex: 1; overflow-y: auto; padding: 24px; }
+  .dashboard-scroll h2 { margin: 0 0 16px; font-size: 18px; }
+  .day-card {
+    background: #202c33;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 14px;
+    border: 1px solid #2a3942;
+  }
+  .day-card .day-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 10px;
+  }
+  .day-card h3 { margin: 0; font-size: 15px; color: #00a884; }
+  .day-card .iso { font-size: 11px; color: #8696a0; margin-left: 8px; }
+  .day-card .stats {
+    display: flex; gap: 18px; flex-wrap: wrap;
+    color: #aebac1; font-size: 12px; margin-bottom: 10px;
+  }
+  .day-card .stats span b { color: #e9edef; }
+  .day-card .files {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 6px; margin-top: 8px;
+  }
+  .day-card .file-link {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px; background: #111b21; border-radius: 6px;
+    color: #aebac1; text-decoration: none; font-size: 12px;
+    border: 1px solid #2a3942;
+  }
+  .day-card .file-link:hover { background: #2a3942; color: #e9edef; }
+  .day-card .file-link .file-ico { font-size: 14px; }
+  .day-card .file-link .file-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .day-card .file-link .size { color: #56666f; font-size: 10px; }
+  .day-card .actions { margin-top: 10px; }
+  .day-card .actions a {
+    display: inline-block; padding: 5px 10px; background: #2a3942;
+    color: #aebac1; border-radius: 4px; text-decoration: none; font-size: 11px;
+    margin-right: 6px;
+  }
+  .day-card .actions a:hover { background: #354048; color: #e9edef; }
+  .tipo-pedido       { color: #fbbc04; }
+  .tipo-lista_compras{ color: #00a884; }
+  .tipo-nota_remision{ color: #b07cf3; }
+  .tipo-relacion     { color: #4285f4; }
+  .tipo-extras       { color: #ff7a59; }
+  .tipo-otro         { color: #8696a0; }
+
+  /* ─── Vista Reportes ─────────────────────────────────────────── */
+  .reports-scroll { flex: 1; overflow-y: auto; padding: 24px; }
+  .reports-scroll h2 { margin: 0 0 16px; font-size: 18px; }
+  .reports-table {
+    width: 100%; border-collapse: collapse; background: #202c33;
+    border-radius: 8px; overflow: hidden; font-size: 12px;
+  }
+  .reports-table th {
+    background: #111b21; color: #8696a0; text-align: left;
+    padding: 8px 12px; font-weight: 600; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.4px;
+    border-bottom: 2px solid #2a3942; cursor: pointer; user-select: none;
+  }
+  .reports-table th:hover { color: #e9edef; }
+  .reports-table th .arrow { font-size: 9px; color: #56666f; margin-left: 4px; }
+  .reports-table td { padding: 8px 12px; border-bottom: 1px solid #2a3942; color: #d8e2e8; }
+  .reports-table tr:hover td { background: #2a3942; }
+  .reports-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .reports-table .badge-tipo {
+    display: inline-block; padding: 1px 8px; border-radius: 10px;
+    font-size: 10px; font-weight: bold;
+  }
+  .badge-tipo.regular { background: #1f3a32; color: #00d4a3; }
+  .badge-tipo.extra   { background: #3a2519; color: #ff9d6c; }
+  .badge-estado {
+    display: inline-block; padding: 1px 8px; border-radius: 10px;
+    font-size: 10px;
+  }
+  .badge-estado.vigente    { background: #2a3942; color: #aebac1; }
+  .badge-estado.modificado { background: #3a3015; color: #fbbc04; }
+  .badge-estado.aceptado   { background: #1f3a32; color: #00d4a3; }
+  .badge-estado.cancelado  { background: #3a1f1f; color: #ff7a7a; }
+  .reports-summary {
+    display: flex; gap: 24px; padding: 12px 16px; background: #111b21;
+    border-radius: 6px; margin-bottom: 16px; font-size: 13px; color: #aebac1;
+  }
+  .reports-summary b { color: #e9edef; }
+  .reports-controls {
+    display: flex; gap: 10px; margin-bottom: 12px; align-items: center;
+  }
+  .reports-controls input, .reports-controls select {
+    background: #2a3942; border: none; color: #e9edef;
+    padding: 6px 10px; border-radius: 5px; font-size: 12px; outline: none;
+  }
+  .reports-controls label { font-size: 11px; color: #8696a0; }
 </style>
 </head>
 <body>
@@ -185,21 +323,82 @@
   <h1>🍎 Frutas Kelly · WhatsApp Agent</h1>
   <div class="meta"><span class="dot"></span><span id="status">conectando...</span></div>
 </header>
-<div class="layout">
-  <main><div class="feed" id="feed"></div></main>
-  <aside class="events-panel">
-    <h2>⚙️ Actividad del agente</h2>
-    <div id="events"></div>
-  </aside>
+
+<div class="shell">
+  <!-- ─── SIDEBAR ────────────────────────────────────────────── -->
+  <nav class="sidebar">
+    <div class="group-label">Operación</div>
+    <div class="nav-item" data-view="dashboard"><span class="ico">📅</span><span>Dashboard</span></div>
+    <div class="nav-item active" data-view="sandbox"><span class="ico">💬</span><span>WhatsApp Sandbox</span></div>
+    <div class="nav-item" data-view="reports"><span class="ico">📋</span><span>Reportes</span></div>
+
+    <div class="group-label">Acciones</div>
+    <div class="nav-item" id="action-reload-prices"><span class="ico">💲</span><span>Recargar precios</span></div>
+    <div class="nav-item" id="action-reload-keywords"><span class="ico">🔄</span><span>Recargar keywords</span></div>
+    <div class="nav-item" id="action-consolidar"><span class="ico">📑</span><span>Consolidar notas</span></div>
+  </nav>
+
+  <!-- ─── CONTENT ────────────────────────────────────────────── -->
+  <div class="content">
+
+    <!-- ▸ Vista: Dashboard / Calendario ────────────────────── -->
+    <section class="view" id="view-dashboard">
+      <div class="dashboard-scroll">
+        <h2>📅 Días procesados</h2>
+        <div id="dashboard-content"><div class="empty">Cargando…</div></div>
+      </div>
+    </section>
+
+    <!-- ▸ Vista: WhatsApp Sandbox (default) ─────────────────── -->
+    <section class="view active" id="view-sandbox">
+      <div class="sandbox-layout">
+        <div class="sandbox-main"><div class="feed" id="feed"></div></div>
+        <aside class="events-panel">
+          <h2>⚙️ Actividad del agente</h2>
+          <div id="events"></div>
+        </aside>
+      </div>
+      <div class="composer">
+        <button class="attach-btn" id="composer-attach" type="button" title="Adjuntar imagen, PDF o Excel">📎</button>
+        <input type="file" id="composer-file" accept=".jpg,.jpeg,.png,.webp,.pdf,.xlsx,.xls" style="display:none">
+        <input type="text" id="composer-input" placeholder="Escribe un mensaje para probar al AI..." autofocus>
+        <span class="hint" id="composer-hint">simulator</span>
+        <button id="composer-send">Enviar</button>
+      </div>
+    </section>
+
+    <!-- ▸ Vista: Reportes ────────────────────────────────────── -->
+    <section class="view" id="view-reports">
+      <div class="reports-scroll">
+        <h2>📋 Relación de remisiones (todos los días)</h2>
+        <div id="reports-summary" class="reports-summary"></div>
+        <div class="reports-controls">
+          <label>Filtrar:</label>
+          <input type="text" id="reports-filter" placeholder="hospital, folio, fecha…">
+          <label>Tipo:</label>
+          <select id="reports-tipo-filter">
+            <option value="">Todos</option>
+            <option value="regular">Regular</option>
+            <option value="extra">Extra</option>
+          </select>
+          <label>Estado:</label>
+          <select id="reports-estado-filter">
+            <option value="">Todos</option>
+            <option value="vigente">Vigente</option>
+            <option value="modificado">Modificado</option>
+            <option value="aceptado">Aceptado</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
+        </div>
+        <div id="reports-content"><div class="empty">Cargando…</div></div>
+      </div>
+    </section>
+
+  </div>
 </div>
-<div class="composer">
-  <button class="attach-btn" id="composer-attach" type="button" title="Adjuntar imagen, PDF o Excel">📎</button>
-  <input type="file" id="composer-file" accept=".jpg,.jpeg,.png,.webp,.pdf,.xlsx,.xls" style="display:none">
-  <input type="text" id="composer-input" placeholder="Escribe un mensaje para probar al AI..." autofocus>
-  <span class="hint" id="composer-hint">simulator</span>
-  <button id="composer-send">Enviar</button>
-</div>
+
 <footer>Auto-refresh cada 2s · <span id="count">0</span> mensajes en log · modo simulador (no envía a WhatsApp)</footer>
+
 <script>
 const $ = (id) => document.getElementById(id);
 const escape = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -207,8 +406,42 @@ const linkify = (escapedHtml) => escapedHtml.replace(
   /(https?:\/\/[^\s<>"]+)/g,
   '<a href="$1" target="_blank" rel="noopener" style="color:#53bdeb;text-decoration:underline">$1</a>'
 );
+const fmtMoney = (n) => '$' + Number(n).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
-async function load() {
+// ─── Navegación entre vistas ───────────────────────────────────
+let currentView = 'sandbox';
+document.querySelectorAll('nav.sidebar .nav-item[data-view]').forEach(item => {
+  item.addEventListener('click', () => {
+    const v = item.dataset.view;
+    document.querySelectorAll('nav.sidebar .nav-item[data-view]').forEach(n => n.classList.remove('active'));
+    item.classList.add('active');
+    document.querySelectorAll('section.view').forEach(s => s.classList.remove('active'));
+    $(`view-${v}`).classList.add('active');
+    currentView = v;
+    if (v === 'dashboard') loadDashboard();
+    if (v === 'reports') loadReports();
+  });
+});
+
+// ─── Acciones laterales ────────────────────────────────────────
+$('action-reload-prices').addEventListener('click', async () => {
+  const r = await fetch('/api/reload-prices', {method: 'POST'});
+  const d = await r.json();
+  alert(d.ok ? `✓ Recargados ${d.productos_cargados} productos` : '⚠️ Error al recargar');
+});
+$('action-reload-keywords').addEventListener('click', async () => {
+  const r = await fetch('/api/reload-keywords', {method: 'POST'});
+  const d = await r.json();
+  alert(d.ok ? `✓ Keywords recargados (${JSON.stringify(d)})` : '⚠️ Error');
+});
+$('action-consolidar').addEventListener('click', async () => {
+  const r = await fetch('/api/consolidar-notas', {method: 'POST'});
+  const d = await r.json();
+  alert('Resultado: ' + JSON.stringify(d).slice(0, 200));
+});
+
+// ─── Sandbox: feed + events + composer ─────────────────────────
+async function loadSandbox() {
   try {
     const [rm, re] = await Promise.all([
       fetch('/api/messages?limit=200'),
@@ -216,7 +449,7 @@ async function load() {
     ]);
     if (!rm.ok) throw new Error('HTTP ' + rm.status);
     const dm = await rm.json();
-    render(dm);
+    renderMessages(dm);
     if (re.ok) renderEvents(await re.json());
     $('status').textContent = 'conectado · servidor activo';
   } catch (e) {
@@ -240,24 +473,22 @@ function renderEvents(data) {
       <div class="event cat-${escape(ev.category)} level-${escape(ev.level)}">
         <span class="ts">${escape(ts)}</span>
         <span class="cat">${escape(ev.category)}</span>
-        <span class="msg">${escape(ev.message)}</span>
+        <span class="msg-text">${escape(ev.message)}</span>
         ${metaStr}
       </div>`;
   }).join('');
   if (wasAtBottom) aside.scrollTop = aside.scrollHeight;
 }
 
-function render(data) {
+function renderMessages(data) {
   const feed = $('feed');
   $('count').textContent = data.messages.length;
   if (!data.messages.length) {
     feed.innerHTML = '<div class="empty">Aún no hay mensajes.<br><br>Manda un WhatsApp al número de prueba <b>+1 555 642 8375</b> para verlo aquí.</div>';
     return;
   }
-  // Recordar scroll si está pegado abajo
-  const main = document.querySelector('main');
+  const main = document.querySelector('.sandbox-main');
   const wasAtBottom = main.scrollHeight - main.scrollTop - main.clientHeight < 50;
-
   feed.innerHTML = data.messages.map(m => {
     const dirIcon = m.direction === 'in' ? '📩' : '📤';
     const dirLabel = m.direction === 'in' ? 'de' : '→';
@@ -266,10 +497,10 @@ function render(data) {
       ? ` · <a href="${escape(m.meta.drive_link)}" target="_blank" style="color:#53bdeb">📂 ver en Drive</a>`
       : '';
     return `
-      <div class="msg ${m.direction}">
+      <div class="msg-row ${m.direction}">
         <div class="bubble-wrap">
           <div class="bubble${errClass}">${linkify(escape(m.body))}</div>
-          <div class="meta">
+          <div class="bubble-meta">
             ${m.timestamp.replace('T',' ')} · ${dirIcon} ${dirLabel} ${escape(m.phone)}
             <span class="badge">${escape(m.type)}</span>
             ${m.meta && m.meta.status_code ? `<span class="badge">HTTP ${m.meta.status_code}</span>` : ''}
@@ -279,7 +510,6 @@ function render(data) {
       </div>
     `;
   }).join('');
-
   if (wasAtBottom) main.scrollTop = main.scrollHeight;
 }
 
@@ -295,52 +525,182 @@ async function send() {
   btn.disabled = true;
   const oldLabel = btn.textContent;
   btn.textContent = 'Pensando...';
-
   const fd = new FormData();
   fd.append('message', text);
   if (file) fd.append('file', file);
-
   input.value = '';
   fileInput.value = '';
   attachBtn.classList.remove('has-file');
   hint.textContent = 'simulator';
-
   try {
     const r = await fetch('/api/simulate', { method: 'POST', body: fd });
-    if (!r.ok) {
-      const err = await r.text();
-      console.error('simulate error', err);
-    }
-  } catch (e) {
-    console.error(e);
-  } finally {
+    if (!r.ok) console.error('simulate error', await r.text());
+  } catch (e) { console.error(e); }
+  finally {
     btn.disabled = false;
     btn.textContent = oldLabel;
     input.focus();
-    load();
+    loadSandbox();
   }
 }
-
 $('composer-attach').addEventListener('click', () => $('composer-file').click());
 $('composer-file').addEventListener('change', (e) => {
   const f = e.target.files[0];
   const attachBtn = $('composer-attach');
   const hint = $('composer-hint');
-  if (f) {
-    attachBtn.classList.add('has-file');
-    hint.textContent = '📎 ' + f.name;
-  } else {
-    attachBtn.classList.remove('has-file');
-    hint.textContent = 'simulator';
-  }
+  if (f) { attachBtn.classList.add('has-file'); hint.textContent = '📎 ' + f.name; }
+  else   { attachBtn.classList.remove('has-file'); hint.textContent = 'simulator'; }
 });
 $('composer-send').addEventListener('click', send);
 $('composer-input').addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
 });
 
-load();
-setInterval(load, 2000);
+// ─── Dashboard: días procesados ────────────────────────────────
+const FILE_ICONS = {
+  pedido: '📊',
+  lista_compras: '🛒',
+  nota_remision: '💵',
+  relacion: '📋',
+  extras: '🎁',
+  otro: '📄',
+};
+async function loadDashboard() {
+  const el = $('dashboard-content');
+  try {
+    const r = await fetch('/api/dias-procesados');
+    const d = await r.json();
+    if (!d.dias.length) {
+      el.innerHTML = '<div class="empty">Aún no hay días procesados.</div>';
+      return;
+    }
+    el.innerHTML = d.dias.map(dia => {
+      const archivos = (dia.archivos || []).sort((a, b) => b.modified - a.modified);
+      const filesHtml = archivos.length ? archivos.map(f => `
+        <a class="file-link" href="${escape(f.url)}" target="_blank" title="${escape(f.name)}">
+          <span class="file-ico tipo-${escape(f.tipo)}">${FILE_ICONS[f.tipo] || '📄'}</span>
+          <span class="file-name">${escape(f.name)}</span>
+          <span class="size">${f.size_kb} KB</span>
+        </a>`).join('') : '<div style="color:#56666f;font-size:12px">Sin archivos generados aún.</div>';
+      const driveBtn = dia.drive_folder
+        ? `<a href="${escape(dia.drive_folder)}" target="_blank">📂 Drive raíz</a>` : '';
+      return `
+        <div class="day-card">
+          <div class="day-head">
+            <div>
+              <h3>${escape(dia.fecha_legible)}</h3>
+              <span class="iso">(${escape(dia.fecha_iso)})</span>
+            </div>
+            <div style="font-size:14px;color:#00d4a3"><b>${fmtMoney(dia.total_dia)}</b></div>
+          </div>
+          <div class="stats">
+            <span>🏥 <b>${dia.hospitales}</b> hospitales</span>
+            <span>💵 Regular: <b>${fmtMoney(dia.total_regular)}</b></span>
+            <span>🎁 Extras: <b>${dia.extras}</b> productos · <b>${fmtMoney(dia.total_extras)}</b></span>
+            <span>📝 Ajustes: <b>${dia.ajustes}</b></span>
+            <span>📄 ${archivos.length} archivo(s)</span>
+          </div>
+          <div class="files">${filesHtml}</div>
+          <div class="actions">${driveBtn}</div>
+        </div>`;
+    }).join('');
+  } catch (e) {
+    el.innerHTML = `<div class="empty">Error: ${escape(e.message)}</div>`;
+  }
+}
+
+// ─── Reports: tabla de remisiones ──────────────────────────────
+let _allRemisiones = [];
+let _sortKey = 'fecha_iso';
+let _sortDir = -1;  // -1 desc, 1 asc
+
+function applyFilterSort() {
+  const q = $('reports-filter').value.toLowerCase().trim();
+  const tipo = $('reports-tipo-filter').value;
+  const estado = $('reports-estado-filter').value;
+  let rows = _allRemisiones.slice();
+  if (q) rows = rows.filter(r =>
+    r.destino.toLowerCase().includes(q) ||
+    String(r.folio).includes(q) ||
+    r.fecha_iso.includes(q) ||
+    r.fecha_legible.toLowerCase().includes(q)
+  );
+  if (tipo) rows = rows.filter(r => r.tipo === tipo);
+  if (estado) rows = rows.filter(r => r.estado === estado);
+  rows.sort((a, b) => {
+    const va = a[_sortKey], vb = b[_sortKey];
+    if (typeof va === 'number') return (va - vb) * _sortDir;
+    return String(va).localeCompare(String(vb)) * _sortDir;
+  });
+  renderReportsTable(rows);
+}
+
+function renderReportsTable(rows) {
+  const el = $('reports-content');
+  if (!rows.length) { el.innerHTML = '<div class="empty">Sin remisiones que mostrar.</div>'; return; }
+  const arrow = (k) => k === _sortKey ? `<span class="arrow">${_sortDir === -1 ? '↓' : '↑'}</span>` : '';
+  el.innerHTML = `
+    <table class="reports-table">
+      <thead><tr>
+        <th data-sort="fecha_iso">Fecha ${arrow('fecha_iso')}</th>
+        <th data-sort="folio" class="num">Folio ${arrow('folio')}</th>
+        <th data-sort="destino">Destino ${arrow('destino')}</th>
+        <th data-sort="tipo">Tipo ${arrow('tipo')}</th>
+        <th data-sort="estado">Estado ${arrow('estado')}</th>
+        <th data-sort="productos" class="num">Productos ${arrow('productos')}</th>
+        <th data-sort="total" class="num">Total ${arrow('total')}</th>
+      </tr></thead>
+      <tbody>
+        ${rows.map(r => `
+          <tr>
+            <td>${escape(r.fecha_legible)}<br><span style="color:#56666f;font-size:10px">${escape(r.fecha_iso)}</span></td>
+            <td class="num">${r.folio_str ? '#' + escape(String(r.folio).padStart(10, '0')) : '—'}</td>
+            <td>${escape(r.destino)}</td>
+            <td><span class="badge-tipo ${escape(r.tipo)}">${escape(r.tipo)}</span></td>
+            <td><span class="badge-estado ${escape(r.estado)}">${escape(r.estado)}</span></td>
+            <td class="num">${r.productos}</td>
+            <td class="num">${fmtMoney(r.total)}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+  el.querySelectorAll('th[data-sort]').forEach(th => {
+    th.addEventListener('click', () => {
+      const k = th.dataset.sort;
+      if (_sortKey === k) _sortDir = -_sortDir;
+      else { _sortKey = k; _sortDir = -1; }
+      applyFilterSort();
+    });
+  });
+}
+
+async function loadReports() {
+  try {
+    const r = await fetch('/api/relaciones-todas');
+    const d = await r.json();
+    _allRemisiones = d.remisiones || [];
+    const sum = $('reports-summary');
+    const total = _allRemisiones.reduce((s, r) => s + r.total, 0);
+    const reg = _allRemisiones.filter(r => r.tipo === 'regular');
+    const ex = _allRemisiones.filter(r => r.tipo === 'extra');
+    sum.innerHTML = `
+      <span><b>${_allRemisiones.length}</b> remisiones</span>
+      <span>Regular: <b>${reg.length}</b> · ${fmtMoney(reg.reduce((s,r)=>s+r.total,0))}</span>
+      <span>Extras: <b>${ex.length}</b> · ${fmtMoney(ex.reduce((s,r)=>s+r.total,0))}</span>
+      <span>Total: <b>${fmtMoney(total)}</b></span>`;
+    applyFilterSort();
+  } catch (e) {
+    $('reports-content').innerHTML = `<div class="empty">Error: ${escape(e.message)}</div>`;
+  }
+}
+$('reports-filter').addEventListener('input', applyFilterSort);
+$('reports-tipo-filter').addEventListener('change', applyFilterSort);
+$('reports-estado-filter').addEventListener('change', applyFilterSort);
+
+// ─── Auto-refresh ──────────────────────────────────────────────
+loadSandbox();
+setInterval(() => {
+  if (currentView === 'sandbox') loadSandbox();
+}, 2000);
 </script>
 </body>
 </html>

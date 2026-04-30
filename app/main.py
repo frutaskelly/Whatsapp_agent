@@ -234,6 +234,190 @@ def create_app():
     def health():
         return jsonify({"status": "ok"}), 200
 
+    # ─── Dashboard data endpoints ───────────────────────────────────────────
+    @app.route("/api/dias-procesados")
+    def api_dias_procesados():
+        """Lista los días procesados con sus archivos generados.
+
+        Para cada día (basado en storage/pedidos_dia/<fecha>.json) devuelve:
+        fecha, fecha_legible, totales, # hospitales, # ajustes, archivos
+        en storage/processed/ que matcheen con la fecha legible.
+        """
+        import json
+        import re
+        dias = []
+        pedidos_dir = config.BASE_DIR / "storage" / "pedidos_dia"
+        extras_dir = config.BASE_DIR / "storage" / "extras_dia"
+        processed_dir = config.PROCESSED_DIR
+
+        for state_path in sorted(pedidos_dir.glob("*.json"), reverse=True):
+            try:
+                state = json.loads(state_path.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            fecha_iso = state.get("fecha", state_path.stem)
+            fecha_legible = state.get("fecha_legible", fecha_iso)
+
+            total_reg = sum(h.get("total", 0) for h in state.get("hospitales", {}).values())
+            n_hospitales = len(state.get("hospitales", {}))
+            n_ajustes = len(state.get("ajustes", []))
+
+            # Sumar extras del mismo día si existen
+            ex_path = extras_dir / f"{fecha_iso}.json"
+            total_ex = 0.0
+            n_extras = 0
+            if ex_path.exists():
+                try:
+                    ex = json.loads(ex_path.read_text(encoding="utf-8"))
+                    total_ex = sum(e.get("importe", 0) for e in ex.get("extras", [])
+                                    if e.get("cantidad", 0) > 0)
+                    n_extras = sum(1 for e in ex.get("extras", []) if e.get("cantidad", 0) > 0)
+                except Exception:
+                    pass
+
+            # Files: buscar archivos en processed/ cuyo nombre contenga la fecha legible
+            # (ej. "27 de abril", "27 de April") o la fecha-iso
+            archivos = []
+            if processed_dir.exists():
+                # Patrones posibles: "27 de abril", "27 de April", "(2026-04-27)"
+                patterns = [fecha_legible, fecha_legible.replace("abril", "April"),
+                            f"({fecha_iso})", fecha_iso]
+                for f in sorted(processed_dir.iterdir()):
+                    if not f.is_file():
+                        continue
+                    name = f.name
+                    if any(p in name for p in patterns):
+                        # Clasificar por tipo
+                        nl = name.lower()
+                        if "lista de compras" in nl or "lista_compras" in nl:
+                            tipo = "lista_compras"
+                        elif "nota" in nl and "remisión" in nl or "remision" in nl:
+                            tipo = "nota_remision"
+                        elif "relación" in nl or "relacion" in nl:
+                            tipo = "relacion"
+                        elif "extras" in nl:
+                            tipo = "extras"
+                        elif "pedido" in nl:
+                            tipo = "pedido"
+                        else:
+                            tipo = "otro"
+                        archivos.append({
+                            "name": name,
+                            "url": f"/files/processed/{name}",
+                            "tipo": tipo,
+                            "size_kb": round(f.stat().st_size / 1024, 1),
+                            "modified": f.stat().st_mtime,
+                        })
+
+            # Drive folder URL — si tenemos GOOGLE_DRIVE_FOLDER_ID, link general
+            drive_root = None
+            if getattr(config, "GOOGLE_DRIVE_FOLDER_ID", None):
+                drive_root = f"https://drive.google.com/drive/folders/{config.GOOGLE_DRIVE_FOLDER_ID}"
+
+            dias.append({
+                "fecha_iso": fecha_iso,
+                "fecha_legible": fecha_legible,
+                "hospitales": n_hospitales,
+                "ajustes": n_ajustes,
+                "extras": n_extras,
+                "total_regular": round(total_reg, 2),
+                "total_extras": round(total_ex, 2),
+                "total_dia": round(total_reg + total_ex, 2),
+                "archivos": archivos,
+                "drive_folder": drive_root,
+            })
+        return jsonify({"dias": dias})
+
+    @app.route("/api/relaciones-todas")
+    def api_relaciones_todas():
+        """Tabla consolidada de TODAS las remisiones (regulares + extras) en todos los días."""
+        import json
+        remisiones = []
+        pedidos_dir = config.BASE_DIR / "storage" / "pedidos_dia"
+        extras_dir = config.BASE_DIR / "storage" / "extras_dia"
+
+        for state_path in sorted(pedidos_dir.glob("*.json"), reverse=True):
+            try:
+                state = json.loads(state_path.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            fecha_iso = state.get("fecha", state_path.stem)
+            fecha_legible = state.get("fecha_legible", fecha_iso)
+            for hospital, info in state.get("hospitales", {}).items():
+                folio = info.get("folio_remision") or ""
+                try:
+                    folio_int = int(folio) if folio else 0
+                except (TypeError, ValueError):
+                    folio_int = 0
+                remisiones.append({
+                    "fecha_iso": fecha_iso,
+                    "fecha_legible": fecha_legible,
+                    "folio": folio_int,
+                    "folio_str": folio,
+                    "destino": hospital,
+                    "tipo": "regular",
+                    "estado": info.get("estado", "vigente"),
+                    "total": round(info.get("total", 0), 2),
+                    "productos": sum(1 for p in info.get("productos", [])
+                                       if p.get("cantidad", 0) > 0),
+                })
+
+        # Extras al ALMACÉN EHMO u otros destinos
+        for ex_path in sorted(extras_dir.glob("*.json"), reverse=True):
+            try:
+                ex_state = json.loads(ex_path.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            fecha_iso = ex_state.get("fecha", ex_path.stem)
+            fecha_legible = ex_state.get("fecha_legible", fecha_iso)
+            folios_destinos = ex_state.get("folios_por_destino") or {}
+            estados_destinos = ex_state.get("estados_por_destino") or {}
+
+            # Agrupar extras por destino
+            por_destino: dict[str, list[dict]] = {}
+            for e in ex_state.get("extras", []):
+                if e.get("cantidad", 0) <= 0:
+                    continue
+                por_destino.setdefault(e.get("hospital", "ALMACÉN EHMO"), []).append(e)
+
+            for destino, items in por_destino.items():
+                folio = folios_destinos.get(destino) or ""
+                try:
+                    folio_int = int(folio) if folio else 0
+                except (TypeError, ValueError):
+                    folio_int = 0
+                total = sum(e.get("importe", 0) for e in items)
+                remisiones.append({
+                    "fecha_iso": fecha_iso,
+                    "fecha_legible": fecha_legible,
+                    "folio": folio_int,
+                    "folio_str": folio,
+                    "destino": f"{destino} (EXTRA)",
+                    "tipo": "extra",
+                    "estado": estados_destinos.get(destino, "vigente"),
+                    "total": round(total, 2),
+                    "productos": len(items),
+                })
+
+        # Orden: fecha desc, luego folio asc
+        remisiones.sort(key=lambda r: (r["fecha_iso"], -r["folio"] if r["folio"] else 0), reverse=True)
+        return jsonify({"remisiones": remisiones})
+
+    @app.route("/files/processed/<path:filename>")
+    def serve_processed(filename):
+        """Sirve archivos generados desde storage/processed/ para descargar/ver."""
+        from flask import send_from_directory, abort
+        directory = Path(config.PROCESSED_DIR).resolve()
+        # Validación: el archivo debe existir Y estar dentro del directorio (no ../)
+        target = (directory / filename).resolve()
+        try:
+            target.relative_to(directory)
+        except ValueError:
+            return abort(403)
+        if not target.exists() or not target.is_file():
+            return abort(404)
+        return send_from_directory(str(directory), filename)
+
     return app
 
 

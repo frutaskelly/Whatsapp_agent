@@ -31,6 +31,34 @@ _SINONIMOS = {
     "pollo": "pollo",
 }
 
+# Aliases de búsqueda — cuando el operador escribe un nombre genérico que
+# debería resolver a un producto específico de la lista. Se aplica ANTES
+# del matcher: si el alimento normalizado coincide con una clave, se busca
+# usando el value en su lugar.
+#
+# Reglas confirmadas con el operador (2026-04-30):
+#   - "tomate" en libreta de comedor = jitomate (ellos usan ambos términos)
+#     → preferir JITOMATE SALADET (más común y barato que el bola)
+#   - "hierba buena" / "yerbabuena" → HIERBABUENA (no "hierbas de olor")
+#   - "chile jalapeño" → CHILE CUARESMEÑO (mismo precio, equivalentes)
+_ALIAS_BUSQUEDA = {
+    "tomate": "jitomate saladet",
+    "tomates": "jitomate saladet",
+    "hierba buena": "hierbabuena",
+    "hrerva buena": "hierbabuena",  # variante ortográfica común en libretas
+    "yerba buena": "hierbabuena",
+    "yerbabuena": "hierbabuena",
+    "yierba buena": "hierbabuena",
+    "yierbabuena": "hierbabuena",
+    "chile jalapeno": "chile cuaresmeno",
+    "jalapeno": "chile cuaresmeno",
+}
+
+
+def _compact(s: str) -> str:
+    """Normaliza y quita TODOS los espacios. 'hierba buena' → 'hierbabuena'."""
+    return _normalize(s).replace(" ", "")
+
 
 @lru_cache(maxsize=1)
 def cargar_lista_precios() -> list[dict]:
@@ -73,7 +101,9 @@ def buscar_precio(alimento: str) -> dict | None:
     """Encuentra el mejor match de precio para un alimento del pedido.
 
     Algoritmo en orden de prioridad:
+      0. Alias map (overrides explícitos)
       1. Match exacto (mayor prioridad)
+      1.5. Match compacto (sin espacios): 'hierba buena' ↔ 'hierbabuena'
       2. Containment bidireccional: key dentro de alimento O alimento dentro de key
          (ej. "Comino entero" ↔ "comino entero 60 g")
       3. Palabras significativas en común (≥4 chars), penalizando diferencias
@@ -87,9 +117,25 @@ def buscar_precio(alimento: str) -> dict | None:
     if not items:
         return None
 
-    a = _normalize(alimento)
-    if not a:
+    a_orig = _normalize(alimento)
+    if not a_orig:
         return None
+
+    # Estrategia 0: alias map. Aplica solo si:
+    #   - a_orig coincide EXACTO con la clave del alias (palabra simple), o
+    #   - la clave del alias es una FRASE (con espacios) y aparece como
+    #     substring en a_orig.
+    # Esto evita que 'tomate' (alias→jitomate saladet) capture 'tomate verde'.
+    a = a_orig
+    for alias_key, alias_target in _ALIAS_BUSQUEDA.items():
+        if a_orig == alias_key:
+            a = alias_target
+            break
+        if " " in alias_key and alias_key in a_orig:
+            a = a_orig.replace(alias_key, alias_target)
+            break
+
+    a_compact = _compact(a)
     a_words = [w for w in a.split() if len(w) >= 3]
 
     best = None
@@ -99,6 +145,7 @@ def buscar_precio(alimento: str) -> dict | None:
         key = item["key"]
         if not key:
             continue
+        k_compact = _compact(key)
         k_words = [w for w in key.split() if len(w) >= 3]
 
         score = 0
@@ -106,6 +153,9 @@ def buscar_precio(alimento: str) -> dict | None:
         # Estrategia 1: match exacto
         if a == key:
             score = 10000
+        # Estrategia 1.5: match exacto compacto (sin espacios)
+        elif a_compact == k_compact and a_compact:
+            score = 9500
         # Estrategia 2: containment bidireccional (mucho más fuerte que palabra suelta)
         elif key in a:
             # ej. lista="Acelgas", pedido="acelgas frescas en manojo" → match fuerte
@@ -113,6 +163,11 @@ def buscar_precio(alimento: str) -> dict | None:
         elif a in key:
             # ej. pedido="Comino entero", lista="comino entero 60 g" → match fuerte
             score = 500 + len(a) * 3
+        # Estrategia 2.5: containment compacto (key dentro de a sin espacios)
+        elif k_compact in a_compact and len(k_compact) >= 5:
+            score = 400 + len(k_compact) * 2
+        elif a_compact in k_compact and len(a_compact) >= 5:
+            score = 400 + len(a_compact) * 2
         else:
             # Estrategia 3: palabras significativas en común
             a_set = set(a_words)

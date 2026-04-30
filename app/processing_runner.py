@@ -62,7 +62,7 @@ def maybe_process(phone: str, attachment_path: Path | None, ai_result: dict,
         folios = (ai_result.get("datos") or {}).get("folios") or []
         return _control_estado(phone, folios, "reactivar")
     if accion == "reporte_control":
-        return _reporte_control(phone)
+        return _reporte_control(phone, fecha_iso=fecha_iso_pedida)
 
     # Caso 1: modificación del pedido (cliente cambia ANTES de surtir, productos FyV)
     if accion == "aplicar_modificacion":
@@ -521,11 +521,14 @@ def _control_estado(phone: str, folios: list, accion: str) -> dict:
     return {"control": True, "accion": accion, "resultados": resultados}
 
 
-def _reporte_control(phone: str) -> dict:
-    """Devuelve el reporte de control de documentos por estado."""
+def _reporte_control(phone: str, fecha_iso: str | None = None) -> dict:
+    """Devuelve el reporte de control de documentos por estado.
+
+    Si fecha_iso se pasa, opera sobre ESE día. Sino, sobre el más reciente.
+    """
     from .control_documentos import reporte_estados, ESTADO_ICON
 
-    rep = reporte_estados()
+    rep = reporte_estados(fecha_iso=fecha_iso)
     if rep.get("error"):
         msg = f"⚠️ {rep['error']}"
         message_log.log_message("out", phone, "text", msg, {"control_error": True})

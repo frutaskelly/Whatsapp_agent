@@ -72,6 +72,7 @@ storage/message_log.jsonl
 #   - .env.enc, secrets/*.json.enc (credenciales encriptadas)
 #   - data/Lista_Precios_EHMO.xlsx
 #   - storage/keywords.json
+#   - storage/clientes.json
 #   - storage/folio_counter*.json
 #   - storage/pedidos_dia/*.json
 #   - storage/extras_dia/*.json

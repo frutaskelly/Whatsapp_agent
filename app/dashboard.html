@@ -296,6 +296,99 @@
   .tipo-extras       { color: #ff7a59; }
   .tipo-otro         { color: #8696a0; }
 
+  /* ─── Vistas Lista de Precios y Clientes ─────────────────────── */
+  .editor-scroll { flex: 1; overflow-y: auto; padding: 24px; }
+  .editor-scroll h2 { margin: 0 0 8px; font-size: 18px; }
+  .editor-scroll .subtitle { color: #8696a0; font-size: 12px; margin-bottom: 16px; }
+  .editor-toolbar {
+    display: flex; gap: 10px; align-items: center; margin-bottom: 12px;
+    padding: 10px 14px; background: #111b21; border-radius: 6px;
+  }
+  .editor-toolbar input[type="text"], .editor-toolbar select {
+    background: #2a3942; border: none; color: #e9edef;
+    padding: 6px 10px; border-radius: 5px; font-size: 12px; outline: none;
+  }
+  .editor-toolbar .btn {
+    background: #00a884; color: white; border: none;
+    padding: 7px 14px; border-radius: 5px; cursor: pointer; font-size: 12px;
+    font-weight: 600;
+  }
+  .editor-toolbar .btn:hover { background: #008f72; }
+  .editor-toolbar .btn:disabled { background: #555; cursor: not-allowed; }
+  .editor-toolbar .btn.secondary { background: #2a3942; color: #aebac1; }
+  .editor-toolbar .btn.secondary:hover { background: #354048; color: #e9edef; }
+  .editor-toolbar .btn.danger { background: #5c2828; color: #ffaaaa; }
+  .editor-toolbar .btn.danger:hover { background: #7a3535; color: white; }
+  .editor-toolbar label { font-size: 11px; color: #8696a0; }
+  .save-status {
+    font-size: 11px; padding: 4px 10px; border-radius: 4px;
+    margin-left: auto;
+  }
+  .save-status.dirty   { background: #3a3015; color: #fbbc04; }
+  .save-status.saving  { background: #2a3942; color: #aebac1; }
+  .save-status.saved   { background: #1f3a32; color: #00d4a3; }
+  .save-status.error   { background: #3a1f1f; color: #ff7a7a; }
+
+  table.editor-table {
+    width: 100%; border-collapse: collapse; background: #202c33;
+    border-radius: 8px; overflow: hidden; font-size: 12px;
+  }
+  table.editor-table th {
+    background: #111b21; color: #8696a0; text-align: left;
+    padding: 8px 10px; font-weight: 600; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.4px;
+    border-bottom: 2px solid #2a3942;
+  }
+  table.editor-table td {
+    padding: 4px 10px; border-bottom: 1px solid #2a3942; color: #d8e2e8;
+    vertical-align: middle;
+  }
+  table.editor-table tr:hover td { background: #2a3942; }
+  table.editor-table input, table.editor-table select, table.editor-table textarea {
+    background: transparent; border: 1px solid transparent;
+    color: #e9edef; padding: 5px 8px; border-radius: 4px;
+    font-size: 12px; outline: none; width: 100%;
+    font-family: inherit;
+  }
+  table.editor-table input:focus, table.editor-table select:focus,
+  table.editor-table textarea:focus {
+    background: #1a2429; border-color: #00a884;
+  }
+  table.editor-table input.changed { border-color: #fbbc04; background: rgba(251,188,4,0.08); }
+  table.editor-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.editor-table input.num { text-align: right; }
+  table.editor-table .row-actions { width: 60px; text-align: center; }
+  table.editor-table .del-btn {
+    background: transparent; color: #ff7a7a; border: 1px solid #5c2828;
+    cursor: pointer; padding: 3px 8px; border-radius: 4px; font-size: 11px;
+  }
+  table.editor-table .del-btn:hover { background: #5c2828; color: white; }
+
+  /* Cards para clientes (más legibles que tabla en este caso) */
+  .cliente-card {
+    background: #202c33; border: 1px solid #2a3942; border-radius: 10px;
+    padding: 16px 20px; margin-bottom: 14px;
+  }
+  .cliente-card h3 { margin: 0 0 4px; font-size: 16px; color: #00a884; }
+  .cliente-card .id-tag { font-size: 10px; color: #8696a0; margin-bottom: 12px; }
+  .cliente-card .grid {
+    display: grid; grid-template-columns: 130px 1fr; gap: 6px 14px; align-items: center;
+  }
+  .cliente-card .grid label { color: #8696a0; font-size: 11px; }
+  .cliente-card .grid input, .cliente-card .grid select, .cliente-card .grid textarea {
+    background: #111b21; border: 1px solid #2a3942; color: #e9edef;
+    padding: 6px 10px; border-radius: 4px; font-size: 12px; outline: none;
+    width: 100%; font-family: inherit;
+  }
+  .cliente-card .grid input:focus, .cliente-card .grid select:focus,
+  .cliente-card .grid textarea:focus { border-color: #00a884; }
+  .cliente-card .grid input.changed,
+  .cliente-card .grid select.changed,
+  .cliente-card .grid textarea.changed { border-color: #fbbc04; background: rgba(251,188,4,0.08); }
+  .cliente-card .card-actions {
+    margin-top: 14px; display: flex; gap: 8px; justify-content: flex-end;
+  }
+
   /* ─── Vista Reportes ─────────────────────────────────────────── */
   .reports-scroll { flex: 1; overflow-y: auto; padding: 24px; }
   .reports-scroll h2 { margin: 0 0 16px; font-size: 18px; }
@@ -357,6 +450,10 @@
     <div class="nav-item active" data-view="sandbox"><span class="ico">💬</span><span>WhatsApp Sandbox</span></div>
     <div class="nav-item" data-view="reports"><span class="ico">📋</span><span>Reportes</span></div>
 
+    <div class="group-label">Catálogos</div>
+    <div class="nav-item" data-view="precios"><span class="ico">💲</span><span>Lista de precios</span></div>
+    <div class="nav-item" data-view="clientes"><span class="ico">👥</span><span>Clientes</span></div>
+
     <div class="group-label">Acciones</div>
     <div class="nav-item" id="action-reload-prices"><span class="ico">💲</span><span>Recargar precios</span></div>
     <div class="nav-item" id="action-reload-keywords"><span class="ico">🔄</span><span>Recargar keywords</span></div>
@@ -395,6 +492,35 @@
         <input type="text" id="composer-input" placeholder="Escribe un mensaje para probar al AI..." autofocus>
         <span class="hint" id="composer-hint">simulator</span>
         <button id="composer-send">Enviar</button>
+      </div>
+    </section>
+
+    <!-- ▸ Vista: Lista de Precios ─────────────────────────────── -->
+    <section class="view" id="view-precios">
+      <div class="editor-scroll">
+        <h2>💲 Lista de precios</h2>
+        <div class="subtitle" id="precios-meta">Cargando…</div>
+        <div class="editor-toolbar">
+          <input type="text" id="precios-filter" placeholder="Buscar producto…">
+          <button class="btn secondary" id="precios-add">+ Nuevo producto</button>
+          <button class="btn" id="precios-save" disabled>💾 Guardar cambios</button>
+          <span class="save-status saved" id="precios-status">sin cambios</span>
+        </div>
+        <div id="precios-content"></div>
+      </div>
+    </section>
+
+    <!-- ▸ Vista: Clientes ─────────────────────────────────────── -->
+    <section class="view" id="view-clientes">
+      <div class="editor-scroll">
+        <h2>👥 Clientes</h2>
+        <div class="subtitle">Catálogo de clientes con razón social, RFC, dirección, agente WhatsApp y lista de precios asignada. Editable en vivo.</div>
+        <div class="editor-toolbar">
+          <button class="btn secondary" id="clientes-add">+ Nuevo cliente</button>
+          <button class="btn" id="clientes-save" disabled>💾 Guardar cambios</button>
+          <span class="save-status saved" id="clientes-status">sin cambios</span>
+        </div>
+        <div id="clientes-content"></div>
       </div>
     </section>
 
@@ -451,6 +577,8 @@ document.querySelectorAll('nav.sidebar .nav-item[data-view]').forEach(item => {
     currentView = v;
     if (v === 'dashboard') loadDashboard();
     if (v === 'reports') loadReports();
+    if (v === 'precios') loadPrecios();
+    if (v === 'clientes') loadClientes();
   });
 });
 
@@ -774,6 +902,255 @@ async function loadReports() {
 $('reports-filter').addEventListener('input', applyFilterSort);
 $('reports-tipo-filter').addEventListener('change', applyFilterSort);
 $('reports-estado-filter').addEventListener('change', applyFilterSort);
+
+// ─── Lista de precios (editable) ───────────────────────────────
+let _precios = [];
+let _preciosOrig = '';
+function setPreciosStatus(text, klass) {
+  const el = $('precios-status');
+  el.textContent = text;
+  el.className = 'save-status ' + (klass || 'saved');
+  $('precios-save').disabled = (klass !== 'dirty');
+}
+function preciosDirty() {
+  return JSON.stringify(_precios) !== _preciosOrig;
+}
+function checkPreciosDirty() {
+  if (preciosDirty()) setPreciosStatus('cambios sin guardar', 'dirty');
+  else setPreciosStatus('sin cambios', 'saved');
+}
+async function loadPrecios() {
+  const el = $('precios-content');
+  el.innerHTML = '<div class="empty">Cargando…</div>';
+  try {
+    const r = await fetch('/api/lista-precios');
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    _precios = d.items;
+    _preciosOrig = JSON.stringify(_precios);
+    $('precios-meta').textContent = `${d.total_items} productos · archivo: ${d.path}`;
+    setPreciosStatus('sin cambios', 'saved');
+    renderPrecios();
+  } catch (e) {
+    el.innerHTML = `<div class="empty">Error: ${escape(e.message)}</div>`;
+  }
+}
+function renderPrecios() {
+  const q = $('precios-filter').value.toLowerCase().trim();
+  const visibles = _precios
+    .map((p, idx) => ({...p, _idx: idx}))
+    .filter(p => !q || (p.producto || '').toLowerCase().includes(q) ||
+                       (p.unidad || '').toLowerCase().includes(q));
+  const el = $('precios-content');
+  if (!visibles.length) {
+    el.innerHTML = '<div class="empty">Ningún producto coincide con el filtro.</div>';
+    return;
+  }
+  el.innerHTML = `
+    <table class="editor-table">
+      <thead><tr>
+        <th style="width:50px">#</th>
+        <th>Producto</th>
+        <th style="width:120px">Unidad</th>
+        <th style="width:120px" class="num">Precio Unitario</th>
+        <th class="row-actions">Acciones</th>
+      </tr></thead>
+      <tbody>${visibles.map(p => `
+        <tr data-idx="${p._idx}">
+          <td>${p.n != null ? p.n : ''}</td>
+          <td><input type="text" class="p-prod" value="${escape(p.producto || '')}"></td>
+          <td><input type="text" class="p-unidad" value="${escape(p.unidad || '')}"></td>
+          <td class="num"><input type="number" step="0.01" class="p-precio num" value="${p.precio || 0}"></td>
+          <td class="row-actions"><button class="del-btn" data-action="del">Borrar</button></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+  // Event listeners
+  el.querySelectorAll('tr[data-idx]').forEach(tr => {
+    const idx = parseInt(tr.dataset.idx, 10);
+    const inputs = {
+      producto: tr.querySelector('.p-prod'),
+      unidad: tr.querySelector('.p-unidad'),
+      precio: tr.querySelector('.p-precio'),
+    };
+    const orig = {producto: _precios[idx].producto, unidad: _precios[idx].unidad, precio: _precios[idx].precio};
+    Object.entries(inputs).forEach(([k, inp]) => {
+      inp.addEventListener('input', () => {
+        const val = k === 'precio' ? parseFloat(inp.value) || 0 : inp.value;
+        _precios[idx][k] = val;
+        if (String(val) !== String(orig[k])) inp.classList.add('changed');
+        else inp.classList.remove('changed');
+        checkPreciosDirty();
+      });
+    });
+    tr.querySelector('[data-action="del"]').addEventListener('click', () => {
+      if (!confirm('¿Borrar este producto de la lista?')) return;
+      _precios.splice(idx, 1);
+      // Renumerar n
+      _precios.forEach((p, i) => p.n = i + 1);
+      renderPrecios();
+      checkPreciosDirty();
+    });
+  });
+}
+$('precios-filter').addEventListener('input', renderPrecios);
+$('precios-add').addEventListener('click', () => {
+  _precios.unshift({n: 0, producto: '', unidad: 'KG', precio: 0});
+  _precios.forEach((p, i) => p.n = i + 1);
+  $('precios-filter').value = '';
+  renderPrecios();
+  checkPreciosDirty();
+});
+$('precios-save').addEventListener('click', async () => {
+  setPreciosStatus('guardando…', 'saving');
+  try {
+    const r = await fetch('/api/lista-precios', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({items: _precios}),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'error desconocido');
+    _preciosOrig = JSON.stringify(_precios);
+    setPreciosStatus(`✓ guardado (${d.items_guardados} productos · backup: ${d.backup})`, 'saved');
+    setTimeout(() => setPreciosStatus('sin cambios', 'saved'), 4000);
+  } catch (e) {
+    setPreciosStatus(`✗ error: ${e.message}`, 'error');
+  }
+});
+
+// ─── Clientes (editables) ──────────────────────────────────────
+let _clientes = [];
+let _listasDisponibles = [];
+let _clientesOrig = '';
+function setClientesStatus(text, klass) {
+  const el = $('clientes-status');
+  el.textContent = text;
+  el.className = 'save-status ' + (klass || 'saved');
+  $('clientes-save').disabled = (klass !== 'dirty');
+}
+function clientesDirty() {
+  return JSON.stringify(_clientes) !== _clientesOrig;
+}
+function checkClientesDirty() {
+  if (clientesDirty()) setClientesStatus('cambios sin guardar', 'dirty');
+  else setClientesStatus('sin cambios', 'saved');
+}
+async function loadClientes() {
+  const el = $('clientes-content');
+  el.innerHTML = '<div class="empty">Cargando…</div>';
+  try {
+    const r = await fetch('/api/clientes');
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    _clientes = d.clientes;
+    _listasDisponibles = d.lista_precios_disponibles || [];
+    _clientesOrig = JSON.stringify(_clientes);
+    setClientesStatus('sin cambios', 'saved');
+    renderClientes();
+  } catch (e) {
+    el.innerHTML = `<div class="empty">Error: ${escape(e.message)}</div>`;
+  }
+}
+function renderClientes() {
+  const el = $('clientes-content');
+  if (!_clientes.length) {
+    el.innerHTML = '<div class="empty">No hay clientes. Agrega uno con el botón de arriba.</div>';
+    return;
+  }
+  const listasOptions = _listasDisponibles.map(l =>
+    `<option value="${escape(l.id)}">${escape(l.nombre || l.id)}</option>`
+  ).join('');
+  const tipoOptions = ['hospitales', 'comedores', 'otro'].map(t =>
+    `<option value="${t}">${t}</option>`
+  ).join('');
+  el.innerHTML = _clientes.map((c, idx) => `
+    <div class="cliente-card" data-idx="${idx}">
+      <h3 contenteditable="false">${escape(c.nombre || '(sin nombre)')}</h3>
+      <div class="id-tag">ID interno: <b>${escape(c.id || '')}</b> ${c.cliente_id_interno ? '· N° interno: <b>' + c.cliente_id_interno + '</b>' : ''}</div>
+      <div class="grid">
+        <label>ID</label>
+        <input type="text" data-field="id" value="${escape(c.id || '')}">
+        <label>Razón social</label>
+        <input type="text" data-field="nombre" value="${escape(c.nombre || '')}">
+        <label>RFC</label>
+        <input type="text" data-field="rfc" value="${escape(c.rfc || '')}">
+        <label>CP</label>
+        <input type="text" data-field="cp" value="${escape(c.cp || '')}">
+        <label>Dirección</label>
+        <textarea data-field="direccion" rows="2">${escape(c.direccion || '')}</textarea>
+        <label>Agente (WhatsApp)</label>
+        <input type="text" data-field="agente" placeholder="ej. 521961xxxxxxx o EHMO_PHONE" value="${escape(c.agente || '')}">
+        <label>Lista de precios</label>
+        <select data-field="lista_precios_id">${listasOptions.replace(`value="${escape(c.lista_precios_id || '')}"`, `value="${escape(c.lista_precios_id || '')}" selected`)}</select>
+        <label>Tipo de cliente</label>
+        <select data-field="tipo_cliente">${tipoOptions.replace(`value="${escape(c.tipo_cliente || 'hospitales')}"`, `value="${escape(c.tipo_cliente || 'hospitales')}" selected`)}</select>
+        <label>Notas</label>
+        <textarea data-field="notas" rows="2">${escape(c.notas || '')}</textarea>
+      </div>
+      <div class="card-actions">
+        <button class="btn danger" data-action="del">Eliminar cliente</button>
+      </div>
+    </div>
+  `).join('');
+  // Wire inputs
+  el.querySelectorAll('.cliente-card').forEach(card => {
+    const idx = parseInt(card.dataset.idx, 10);
+    const orig = JSON.parse(JSON.stringify(_clientes[idx]));
+    card.querySelectorAll('[data-field]').forEach(inp => {
+      const field = inp.dataset.field;
+      inp.addEventListener('input', () => {
+        _clientes[idx][field] = inp.value;
+        if (String(inp.value) !== String(orig[field] || '')) inp.classList.add('changed');
+        else inp.classList.remove('changed');
+        if (field === 'nombre') {
+          card.querySelector('h3').textContent = inp.value || '(sin nombre)';
+        }
+        checkClientesDirty();
+      });
+      inp.addEventListener('change', () => {
+        _clientes[idx][field] = inp.value;
+        checkClientesDirty();
+      });
+    });
+    card.querySelector('[data-action="del"]').addEventListener('click', () => {
+      if (!confirm(`¿Eliminar el cliente "${_clientes[idx].nombre}"? Esta acción se puede revertir hasta antes de guardar.`)) return;
+      _clientes.splice(idx, 1);
+      renderClientes();
+      checkClientesDirty();
+    });
+  });
+}
+$('clientes-add').addEventListener('click', () => {
+  _clientes.push({
+    id: 'NUEVO_' + (_clientes.length + 1),
+    nombre: 'Nuevo cliente',
+    rfc: '', cp: '', direccion: '',
+    agente: '',
+    lista_precios_id: _listasDisponibles[0]?.id || '',
+    tipo_cliente: 'hospitales',
+    notas: '',
+  });
+  renderClientes();
+  checkClientesDirty();
+});
+$('clientes-save').addEventListener('click', async () => {
+  setClientesStatus('guardando…', 'saving');
+  try {
+    const r = await fetch('/api/clientes', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({clientes: _clientes, lista_precios_disponibles: _listasDisponibles}),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'error desconocido');
+    _clientesOrig = JSON.stringify(_clientes);
+    setClientesStatus(`✓ guardado (${d.clientes_guardados} clientes)`, 'saved');
+    setTimeout(() => setClientesStatus('sin cambios', 'saved'), 3000);
+  } catch (e) {
+    setClientesStatus(`✗ error: ${e.message}`, 'error');
+  }
+});
 
 // ─── Copiar todos los eventos ──────────────────────────────────
 $('copy-events-json').addEventListener('click', async (e) => {

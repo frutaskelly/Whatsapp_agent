@@ -403,6 +403,152 @@ def create_app():
         remisiones.sort(key=lambda r: (r["fecha_iso"], -r["folio"] if r["folio"] else 0), reverse=True)
         return jsonify({"remisiones": remisiones})
 
+    # ─── Lista de precios (editable) ────────────────────────────────────────
+    @app.route("/api/lista-precios", methods=["GET"])
+    def api_lista_precios_get():
+        """Lee la lista de precios actual y devuelve los renglones editables."""
+        import openpyxl
+        from pathlib import Path
+        path = Path(config.LISTA_PRECIOS_PATH)
+        if not path.exists():
+            return jsonify({"error": "Lista de precios no encontrada", "path": str(path)}), 404
+        wb = openpyxl.load_workbook(path, data_only=True)
+        ws = wb["Lista de Precios"] if "Lista de Precios" in wb.sheetnames else wb.active
+        # Header
+        headers = [c.value for c in ws[1]]
+        rows = []
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            if all(v is None for v in row):
+                continue
+            rows.append({
+                "n": row[0] if len(row) > 0 else None,
+                "producto": row[1] if len(row) > 1 else "",
+                "unidad": row[2] if len(row) > 2 else "",
+                "precio": float(row[3]) if len(row) > 3 and row[3] is not None else 0.0,
+            })
+        wb.close()
+        return jsonify({
+            "path": str(path),
+            "headers": headers,
+            "items": rows,
+            "total_items": len(rows),
+        })
+
+    @app.route("/api/lista-precios", methods=["POST"])
+    def api_lista_precios_save():
+        """Guarda la lista de precios completa desde el dashboard.
+
+        Body JSON: {"items": [{"n": 1, "producto": "...", "unidad": "...", "precio": 25.5}, ...]}
+        Crea backup antes de sobrescribir, recarga la cache de pricing.
+        """
+        import openpyxl
+        from openpyxl.styles import Font
+        from pathlib import Path
+        from datetime import datetime as _dt
+        import shutil
+
+        body = request.get_json(silent=True) or {}
+        items = body.get("items") or []
+        if not items:
+            return jsonify({"ok": False, "error": "No hay items para guardar"}), 400
+
+        path = Path(config.LISTA_PRECIOS_PATH)
+        if not path.exists():
+            return jsonify({"ok": False, "error": f"Lista no existe: {path}"}), 404
+
+        # Backup automático
+        ts = _dt.now().strftime("%Y%m%d_%H%M%S")
+        backup_path = path.with_suffix(f".backup_{ts}.xlsx")
+        shutil.copy2(path, backup_path)
+
+        wb = openpyxl.load_workbook(path)
+        ws = wb["Lista de Precios"] if "Lista de Precios" in wb.sheetnames else wb.active
+
+        # Limpiar filas existentes (preservando header)
+        max_row = ws.max_row
+        for r in range(2, max_row + 1):
+            for c in range(1, 5):
+                ws.cell(row=r, column=c).value = None
+
+        # Escribir nuevas filas
+        for i, it in enumerate(items, 1):
+            ws.cell(row=i + 1, column=1, value=int(it.get("n") or i))
+            ws.cell(row=i + 1, column=2, value=str(it.get("producto") or "").strip())
+            ws.cell(row=i + 1, column=3, value=str(it.get("unidad") or "").strip())
+            try:
+                precio = float(it.get("precio") or 0)
+            except (TypeError, ValueError):
+                precio = 0.0
+            ws.cell(row=i + 1, column=4, value=precio)
+        wb.save(path)
+        wb.close()
+
+        # Recargar cache de pricing en memoria
+        from .pricing import cargar_lista_precios
+        cargar_lista_precios.cache_clear()
+        n_loaded = len(cargar_lista_precios())
+
+        log_event("system", f"💲 Lista de precios actualizada desde dashboard ({len(items)} items)",
+                  {"backup": backup_path.name, "items": len(items), "cargados": n_loaded})
+
+        return jsonify({
+            "ok": True,
+            "items_guardados": len(items),
+            "items_cargados": n_loaded,
+            "backup": backup_path.name,
+        })
+
+    # ─── Clientes (editables) ──────────────────────────────────────────────
+    def _clientes_path():
+        from pathlib import Path
+        return Path(config.BASE_DIR) / "storage" / "clientes.json"
+
+    @app.route("/api/clientes", methods=["GET"])
+    def api_clientes_get():
+        import json as _json
+        p = _clientes_path()
+        if not p.exists():
+            return jsonify({"clientes": [], "lista_precios_disponibles": []})
+        try:
+            data = _json.loads(p.read_text(encoding="utf-8"))
+        except Exception as e:
+            return jsonify({"error": f"clientes.json corrupto: {e}"}), 500
+        return jsonify({
+            "clientes": data.get("clientes", []),
+            "lista_precios_disponibles": data.get("lista_precios_disponibles", []),
+        })
+
+    @app.route("/api/clientes", methods=["POST"])
+    def api_clientes_save():
+        """Guarda el catálogo completo de clientes y listas disponibles."""
+        import json as _json
+        body = request.get_json(silent=True) or {}
+        clientes = body.get("clientes")
+        listas = body.get("lista_precios_disponibles")
+        if clientes is None:
+            return jsonify({"ok": False, "error": "Falta 'clientes' en body"}), 400
+
+        p = _clientes_path()
+        # Preservar campos meta (como _documentacion) si ya existían
+        existing = {}
+        if p.exists():
+            try:
+                existing = _json.loads(p.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+
+        new_data = {
+            "_documentacion": existing.get("_documentacion",
+                "Catálogo editable de clientes. Editable desde el dashboard."),
+            "lista_precios_disponibles": listas if listas is not None else
+                existing.get("lista_precios_disponibles", []),
+            "clientes": clientes,
+        }
+        p.write_text(_json.dumps(new_data, ensure_ascii=False, indent=2), encoding="utf-8")
+        log_event("system", f"👥 Clientes actualizados desde dashboard ({len(clientes)} clientes)",
+                  {"clientes": len(clientes)})
+        return jsonify({"ok": True, "clientes_guardados": len(clientes)})
+
     @app.route("/files/processed/<path:filename>")
     def serve_processed(filename):
         """Sirve archivos generados desde storage/processed/ para descargar/ver."""

@@ -1,0 +1,41 @@
+{
+  "_documentacion": "Catálogo editable de clientes. Cada cliente tiene su razón social, RFC, dirección fiscal, agente (número WhatsApp que lo atiende), y la lista de precios que se le aplica. Editable desde el dashboard (Sidebar → Clientes). Para agregar un cliente nuevo desde código, sumar entrada al array clientes.",
+  "lista_precios_disponibles": [
+    {
+      "archivo": "data/Lista_Precios_EHMO.xlsx",
+      "descripcion": "Lista oficial de precios para Lote 5 (Frutas y Verduras) — 106 productos.",
+      "id": "EHMO",
+      "nombre": "Lista EHMO (Hospitales Chiapas)"
+    }
+  ],
+  "clientes": [
+    {
+      "agente": "EHMO_PHONE",
+      "cliente_id_interno": 1,
+      "cp": "78390",
+      "direccion": "Calle: LEGUMBRES 302 No. A, Col. ABASTOS, CP: 78390, SAN LUIS POTOSI, SAN LUIS POTOSI, MEXICO",
+      "folio_file": "folio_counter.json",
+      "id": "EHMO",
+      "linea_tipo": "ehmo",
+      "lista_precios_id": "EHMO",
+      "nombre": "GRUPO OPERADOR DE ALIMENTOS EHMO",
+      "notas": "Cliente principal. Manda diariamente Excel BD con pedido de 20 hospitales.",
+      "rfc": "GOA180712SF5",
+      "tipo_cliente": "hospitales"
+    },
+    {
+      "agente": "",
+      "cliente_id_interno": 2,
+      "cp": "78390",
+      "direccion": "Calle: LEGUMBRES 302 No. A, Col. ABASTOS, CP: 78390, SAN LUIS POTOSI, SAN LUIS POTOSI, MEXICO",
+      "folio_file": "folio_counter_comedores.json",
+      "id": "SURENA",
+      "linea_tipo": "comedores",
+      "lista_precios_id": "EHMO",
+      "nombre": "GRUPO SUREÑA",
+      "notas": "Comedores humanitarios (6 destinos: Patria, CCI, 6 de Junio, Shanka, Jobo, Copoya). Pedido en libreta/foto, no Excel.",
+      "rfc": "GSU110118GL0",
+      "tipo_cliente": "comedores"
+    }
+  ]
+}

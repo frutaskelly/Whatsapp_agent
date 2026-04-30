@@ -47,7 +47,13 @@ def maybe_process(phone: str, attachment_path: Path | None, ai_result: dict,
     if accion == "generar_relacion":
         return _generar_relacion_handler(phone, fecha_iso=fecha_iso_pedida)
 
-    # Caso 0d: imprimir una nota específica por folio
+    # Caso 0d: procesar pedido extraído de libreta (fotos manuscritas, sin Excel).
+    # Usado por el agente SUREÑA Comedores. El AI ya extrajo y confirmó los
+    # datos con el operador (contenido + fecha de entrega) antes de disparar esto.
+    if accion == "procesar_libreta":
+        return _procesar_libreta_desde_ai(phone, ai_result, agente=agente)
+
+    # Caso 0e: imprimir una nota específica por folio
     if accion == "imprimir_nota_folio":
         folio = (ai_result.get("datos") or {}).get("folio")
         return _imprimir_nota_folio(phone, folio, fecha_iso=fecha_iso_pedida)
@@ -436,6 +442,112 @@ def _aplicar_extras_desde_ai(phone: str, ai_result: dict) -> dict:
 
     return {"extra": True, "fecha": fecha_iso, "cambios": res["cambios"],
             "regen": regen}
+
+
+def _procesar_libreta_desde_ai(phone: str, ai_result: dict,
+                                 agente: dict | None = None) -> dict:
+    """Procesa un pedido de libreta (foto) tras la doble confirmación del AI.
+
+    Espera que el AI haya devuelto datos con la siguiente estructura:
+      datos.fecha_entrega: "YYYY-MM-DD"
+      datos.fecha_legible: "30 de abril"  (opcional, se infiere si no viene)
+      datos.destinos: [
+        {"destino": "Comedor Patria",
+         "productos": [{"alimento": "...", "cantidad": N, "presentacion": "..."}]},
+        ...
+      ]
+    """
+    from .libreta_processor import procesar_pedido_libreta
+    from .pedido_processor import _MESES_NUMERO
+
+    datos = ai_result.get("datos") or {}
+    destinos = datos.get("destinos") or []
+    fecha_iso = (datos.get("fecha_entrega") or "").strip()
+    fecha_legible = (datos.get("fecha_legible") or datos.get("fecha_entrega_legible") or "").strip()
+
+    if not destinos:
+        msg = "⚠️ El AI dijo procesar_libreta pero no me pasó destinos. Reintenta o reenvía la foto."
+        message_log.log_message("out", phone, "text", msg,
+                                 {"libreta_error": "sin destinos",
+                                  "agent_id": (agente or {}).get("id")})
+        return {"error": "sin destinos en datos"}
+
+    if not fecha_iso:
+        msg = "⚠️ Falta la fecha de entrega. Confirma la fecha (YYYY-MM-DD o 'X de mes')."
+        message_log.log_message("out", phone, "text", msg,
+                                 {"libreta_error": "sin fecha"})
+        return {"error": "sin fecha de entrega"}
+
+    # Si vino legible pero no iso, intentar parsear
+    # (lo común es que el AI mande fecha_entrega ISO; este fallback es defensivo)
+    from datetime import datetime as _dt
+    try:
+        d = _dt.strptime(fecha_iso, "%Y-%m-%d").date()
+    except ValueError:
+        # Intentar parsear "30 de abril" → ISO con año actual
+        try:
+            partes = fecha_iso.lower().split()
+            dia = int(partes[0])
+            mes = _MESES_NUMERO.get(partes[-1].rstrip("."))
+            if not mes:
+                raise ValueError("mes desconocido")
+            d = _dt(_dt.now().year, mes, dia).date()
+            fecha_iso = d.isoformat()
+        except Exception:
+            msg = f"⚠️ Fecha '{fecha_iso}' no la pude parsear. Mándamela como YYYY-MM-DD o '30 de abril'."
+            message_log.log_message("out", phone, "text", msg,
+                                     {"libreta_error": "fecha no parseable"})
+            return {"error": "fecha no parseable"}
+
+    if not fecha_legible:
+        # Construir desde el ISO
+        meses_es = ["enero", "febrero", "marzo", "abril", "mayo", "junio",
+                    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
+        fecha_legible = f"{d.day} de {meses_es[d.month - 1]}"
+
+    # Disparar el procesador
+    try:
+        result = procesar_pedido_libreta(
+            destinos=destinos,
+            fecha_entrega_iso=fecha_iso,
+            fecha_entrega_legible=fecha_legible,
+            agente=agente,
+        )
+    except Exception as e:
+        log.exception(f"Error en procesar_pedido_libreta: {e}")
+        msg = f"⚠️ Error procesando la libreta: {e}"
+        message_log.log_message("out", phone, "text", msg,
+                                 {"libreta_error": str(e)})
+        return {"error": str(e)}
+
+    if result.get("error"):
+        msg = f"⚠️ {result['error']}"
+        message_log.log_message("out", phone, "text", msg, {"libreta_error": True})
+        return result
+
+    # Mensaje de seguimiento al operador con los links
+    lines = [
+        f"✓ *Documentos de surtido generados* — {fecha_legible}",
+        f"📦 {result['n_destinos']} destino(s), {result['n_productos_lineas']} producto-líneas.",
+        "",
+    ]
+    if result.get("drive_pdf"):
+        lines.append(f"🖨️ PDF imprimible (uno por comedor): {result['drive_pdf']['link']}")
+    if result.get("drive_lc_pdf"):
+        lines.append(f"🛒 Lista de compras (consolidada PDF): {result['drive_lc_pdf']['link']}")
+    if result.get("drive_lc_xlsx"):
+        lines.append(f"📝 Lista de compras (Excel editable): {result['drive_lc_xlsx']['link']}")
+    lines.append("")
+    lines.append("⚖️ Cuando termines de surtir, mándame los pesos reales (kg) por comedor "
+                 "para emitir las notas de remisión con precios.")
+    msg = "\n".join(lines)
+    out_meta = {"libreta": True, "fecha_iso": fecha_iso,
+                "destinos": result["destinos"]}
+    if agente:
+        out_meta["agent_id"] = agente.get("id")
+    message_log.log_message("out", phone, "text", msg, out_meta)
+
+    return {"libreta": True, **{k: v for k, v in result.items() if k != "df_fyv"}}
 
 
 def _generar_relacion_handler(phone: str, fecha_iso: str | None = None) -> dict:

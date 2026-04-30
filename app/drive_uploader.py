@@ -60,12 +60,28 @@ def _load_credentials():
     return creds if creds and creds.valid else None
 
 
-def _get_service():
-    """Lazy init del cliente. Devuelve None si no está configurado."""
+# Timeout HTTP para llamadas a Drive (segundos). Más alto que el default
+# para tolerar redes lentas o el archivo grande sin abortar prematuramente.
+_HTTP_TIMEOUT_SECONDS = 180
+
+
+def _build_authed_http(creds, timeout: int = _HTTP_TIMEOUT_SECONDS):
+    """Crea un cliente HTTP autenticado con timeout explícito."""
+    import httplib2
+    from google_auth_httplib2 import AuthorizedHttp
+    return AuthorizedHttp(creds, http=httplib2.Http(timeout=timeout))
+
+
+def _get_service(force_new: bool = False):
+    """Lazy init del cliente. Devuelve None si no está configurado.
+
+    Si `force_new=True`, recrea el cliente desde cero — útil después de
+    timeouts/SSL errors persistentes (la conexión cacheada puede estar muerta).
+    """
     global _service, _init_attempted
-    if _service is not None:
+    if _service is not None and not force_new:
         return _service
-    if _init_attempted:
+    if _init_attempted and not force_new:
         return None
     _init_attempted = True
 
@@ -79,8 +95,17 @@ def _get_service():
 
     try:
         from googleapiclient.discovery import build
-        _service = build("drive", "v3", credentials=creds, cache_discovery=False)
-        log.info("Drive: cliente inicializado correctamente (OAuth user)")
+        try:
+            authed_http = _build_authed_http(creds)
+            _service = build("drive", "v3", http=authed_http, cache_discovery=False)
+        except ImportError:
+            # Fallback si google-auth-httplib2 no está disponible:
+            # build sin http custom (usa default sin timeout explícito)
+            _service = build("drive", "v3", credentials=creds, cache_discovery=False)
+        if force_new:
+            log.info("Drive: cliente RE-inicializado (reset por errores)")
+        else:
+            log.info(f"Drive: cliente inicializado (timeout HTTP={_HTTP_TIMEOUT_SECONDS}s)")
         return _service
     except Exception as e:
         log.exception(f"Drive: error inicializando cliente: {e}")
@@ -180,10 +205,13 @@ def _is_transient_error(e: Exception) -> bool:
 
 
 def _do_upload(local_path: Path, original_name: str | None, subfolder: str | None,
-               service, retry_on_404: bool = True, max_retries: int = 3) -> dict | None:
+               service, retry_on_404: bool = True, max_retries: int = 5) -> dict | None:
     base_name = original_name or local_path.name
     drive_name = _build_drive_name(base_name)
-    size_kb = local_path.stat().st_size // 1024 if local_path.exists() else 0
+    size_bytes = local_path.stat().st_size if local_path.exists() else 0
+    size_kb = size_bytes // 1024
+    # Archivos >= 5 MB: usar upload resumable (más robusto a cortes intermitentes)
+    use_resumable = size_bytes >= 5 * 1024 * 1024
 
     # Resolver carpeta destino (raíz o subcarpeta del día)
     parent_id = config.GOOGLE_DRIVE_FOLDER_ID
@@ -191,7 +219,8 @@ def _do_upload(local_path: Path, original_name: str | None, subfolder: str | Non
         parent_id = _get_or_create_folder(subfolder, parent_id, service)
 
     log_event("drive", f"⬆️ Subiendo a Drive: {drive_name}",
-              {"size_kb": size_kb, "subfolder": subfolder or "(raíz)"})
+              {"size_kb": size_kb, "subfolder": subfolder or "(raíz)",
+               "resumable": use_resumable})
 
     last_error = None
     for intento in range(max_retries):
@@ -202,7 +231,7 @@ def _do_upload(local_path: Path, original_name: str | None, subfolder: str | Non
             media = MediaFileUpload(
                 str(local_path),
                 mimetype=mime_type or "application/octet-stream",
-                resumable=False,
+                resumable=use_resumable,
             )
             metadata = {
                 "name": drive_name,
@@ -234,10 +263,20 @@ def _do_upload(local_path: Path, original_name: str | None, subfolder: str | Non
 
             # Errores transitorios (SSL, conexión, timeout): reintento con backoff
             if _is_transient_error(e) and intento < max_retries - 1:
-                wait = 2 ** intento  # 1s, 2s, 4s
+                wait = min(30, 2 ** (intento + 1))  # 2s, 4s, 8s, 16s, 30s
+                # Después del 2do fallo, recrear el service (la conexión
+                # cacheada puede estar muerta — esto fuerza un socket nuevo).
+                refresh_msg = ""
+                if intento >= 1:
+                    service = _get_service(force_new=True) or service
+                    _folder_cache.clear()
+                    if subfolder:
+                        parent_id = _get_or_create_folder(subfolder, config.GOOGLE_DRIVE_FOLDER_ID, service)
+                    refresh_msg = " + cliente Drive recreado"
                 log_event("drive",
-                          f"♻️ Error transitorio ({type(e).__name__}), reintento en {wait}s",
-                          {"intento": intento + 1, "error": msg[:120]}, level="warn")
+                          f"♻️ Error transitorio ({type(e).__name__}), reintento en {wait}s{refresh_msg}",
+                          {"intento": intento + 1, "error": msg[:120],
+                           "espera_s": wait}, level="warn")
                 time.sleep(wait)
                 continue
 
@@ -245,7 +284,7 @@ def _do_upload(local_path: Path, original_name: str | None, subfolder: str | Non
             break
 
     log.exception(f"Drive: error subiendo {local_path}: {last_error}")
-    log_event("drive", f"❌ Error subiendo: {type(last_error).__name__}",
+    log_event("drive", f"❌ Error subiendo tras {max_retries} intentos: {type(last_error).__name__}",
               {"error": str(last_error)[:200]}, level="error")
     return None
 

@@ -482,6 +482,14 @@ def procesar_pedido(input_excel: Path, output_dir: Path,
     # - cantidades negativas (cancelaciones)
     df_fyv = df_fyv[df_fyv["CANTIDAD"].notna() & (df_fyv["CANTIDAD"] > 0)]
 
+    # Estandarizar presentaciones según override por nombre de alimento
+    # (ej. mermelada → CAJA, polvo para hornear → PZ).
+    from .display_names import presentacion_canonica
+    df_fyv["PRESENTACION"] = df_fyv.apply(
+        lambda r: presentacion_canonica(r["ALIMENTO"], fallback=r["PRESENTACION"]),
+        axis=1,
+    )
+
     # Detectar y loguear cantidades sospechosas en el BD original (auditoría)
     sospechosos = df_raw[
         (df_raw["LOTE"].str.upper().str.contains("5 FRUTAS", na=False))

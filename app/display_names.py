@@ -52,3 +52,29 @@ def formatear_presentacion(presentacion) -> str:
     if presentacion is None or presentacion == "":
         return ""
     return str(presentacion).title()
+
+
+# Override de presentación por nombre de producto. Si el alimento contiene el
+# substring (lowercase) en la clave, usa el valor como presentación canónica
+# en vez de la que venga del BD del cliente. Útil cuando EHMO manda
+# presentaciones inconsistentes (ej. "EMMPAQUE DE 454 g" → estandarizar a "PZ").
+_PRESENTACIONES_OVERRIDE = {
+    "mermelada": "CAJA",
+    "polvo para hornear": "PZ",
+    "palanqueta": "PAQUETE",
+}
+
+
+def presentacion_canonica(alimento, fallback="") -> str:
+    """Devuelve la presentación canónica para un alimento.
+
+    Si el alimento coincide con una entrada de _PRESENTACIONES_OVERRIDE
+    (substring case-insensitive), usa esa unidad. Sino, retorna fallback.
+    """
+    if alimento is None:
+        return fallback or ""
+    a = str(alimento).lower()
+    for kw, pres in _PRESENTACIONES_OVERRIDE.items():
+        if kw in a:
+            return pres
+    return fallback or ""

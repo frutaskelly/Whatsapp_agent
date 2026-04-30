@@ -55,7 +55,14 @@ def create_app():
         agent_id = (request.args.get("agent_id") or "").strip() or None
         msgs = message_log.read_messages(limit if not agent_id else 1000)
         if agent_id:
-            msgs = [m for m in msgs if (m.get("meta") or {}).get("agent_id") == agent_id]
+            # Incluir mensajes del agente activo Y mensajes sin agent_id
+            # explícito (típicamente respuestas del sistema "out" dentro de
+            # un flujo iniciado por el agente, ej. PDFs generados que no
+            # propagaron el agent_id en su meta).
+            def _passes(m):
+                m_agent = (m.get("meta") or {}).get("agent_id")
+                return m_agent == agent_id or m_agent is None
+            msgs = [m for m in msgs if _passes(m)]
             msgs = msgs[-limit:]
         return jsonify({"messages": msgs, "filtered_agent_id": agent_id})
 

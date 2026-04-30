@@ -965,6 +965,19 @@ def _recargar_precios(phone: str) -> dict:
     return {"reload_prices": True, "count": len(items)}
 
 
+def _meta_with_agent(meta: dict | None, agente: dict | None) -> dict:
+    """Asegura que el meta tenga agent_id/agente cuando hay un agente activo.
+
+    Esto evita que el dashboard filtre incorrectamente mensajes 'out' del
+    sistema (PDFs, errores, etc.) generados dentro del flujo de un agente.
+    """
+    m = dict(meta or {})
+    if agente:
+        m.setdefault("agent_id", agente.get("id"))
+        m.setdefault("agente", agente.get("nombre"))
+    return m
+
+
 def _consolidar_notas(phone: str, fecha_iso: str | None = None,
                        agente: dict | None = None) -> dict:
     """Genera un PDF único con TODAS las notas vigentes (estado actual).
@@ -1006,8 +1019,8 @@ def _consolidar_notas(phone: str, fecha_iso: str | None = None,
         state, fecha_iso = cargar_estado_mas_reciente()
     if not state:
         msg = "⚠️ No hay pedido del día procesado para este agente, no puedo consolidar notas."
-        message_log.log_message("out", phone, "text", msg, {"consolidar": False,
-                                                              "agent_id": (agente or {}).get("id")})
+        message_log.log_message("out", phone, "text", msg,
+                                 _meta_with_agent({"consolidar": False}, agente))
         return {"error": "no hay pedido"}
 
     # Filtrar el state para incluir solo destinos del tipo de agente activo.
@@ -1021,13 +1034,14 @@ def _consolidar_notas(phone: str, fecha_iso: str | None = None,
             msg = (f"⚠️ El día {fecha_iso} no tiene destinos del tipo '{agente_tipo}' "
                    f"para consolidar.")
             message_log.log_message("out", phone, "text", msg,
-                                     {"consolidar": False, "agent_id": (agente or {}).get("id")})
+                                     _meta_with_agent({"consolidar": False}, agente))
             return {"error": "sin destinos del agente"}
 
     df = estado_a_dataframe(state)
     if df.empty:
         msg = "⚠️ El estado del día no tiene productos vigentes."
-        message_log.log_message("out", phone, "text", msg, {"consolidar": False})
+        message_log.log_message("out", phone, "text", msg,
+                                 _meta_with_agent({"consolidar": False}, agente))
         return {"error": "estado vacío"}
 
     fecha_legible = state.get("fecha_legible", fecha_iso)
@@ -1052,7 +1066,8 @@ def _consolidar_notas(phone: str, fecha_iso: str | None = None,
         log.exception(f"Error consolidando notas: {e}")
         log_event("processor", f"⚠️ Error consolidando notas: {e}", level="warn")
         msg = f"⚠️ Error al consolidar: {e}"
-        message_log.log_message("out", phone, "text", msg, {"consolidar": False})
+        message_log.log_message("out", phone, "text", msg,
+                                 _meta_with_agent({"consolidar": False}, agente))
         return {"error": str(e)}
 
     lines = [
@@ -1068,5 +1083,5 @@ def _consolidar_notas(phone: str, fecha_iso: str | None = None,
     meta = {"consolidar": True, "notas_count": notas_count}
     if drive_link:
         meta["drive_link"] = drive_link
-    message_log.log_message("out", phone, "text", msg, meta)
+    message_log.log_message("out", phone, "text", msg, _meta_with_agent(meta, agente))
     return {"consolidar": True, "drive_link": drive_link, "notas_count": notas_count}

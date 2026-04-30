@@ -54,13 +54,13 @@ def maybe_process(phone: str, attachment_path: Path | None, ai_result: dict,
     # Caso 0e–h: control de documentos (estados de folios)
     if accion == "aceptar_folio":
         folios = (ai_result.get("datos") or {}).get("folios") or []
-        return _control_estado(phone, folios, "aceptar")
+        return _control_estado(phone, folios, "aceptar", fecha_iso=fecha_iso_pedida)
     if accion == "cancelar_folio":
         folios = (ai_result.get("datos") or {}).get("folios") or []
-        return _control_estado(phone, folios, "cancelar")
+        return _control_estado(phone, folios, "cancelar", fecha_iso=fecha_iso_pedida)
     if accion == "reactivar_folio":
         folios = (ai_result.get("datos") or {}).get("folios") or []
-        return _control_estado(phone, folios, "reactivar")
+        return _control_estado(phone, folios, "reactivar", fecha_iso=fecha_iso_pedida)
     if accion == "reporte_control":
         return _reporte_control(phone, fecha_iso=fecha_iso_pedida)
 
@@ -480,11 +480,18 @@ def _generar_relacion_handler(phone: str, fecha_iso: str | None = None) -> dict:
     return {"relacion": True, "drive_xlsx": drive_xlsx, "drive_pdf": drive_pdf}
 
 
-def _control_estado(phone: str, folios: list, accion: str) -> dict:
-    """Aplica una acción (aceptar/cancelar/reactivar) a una lista de folios."""
+def _control_estado(phone: str, folios: list, accion: str,
+                     fecha_iso: str | None = None) -> dict:
+    """Aplica una acción (aceptar/cancelar/reactivar) a una lista de folios.
+
+    Si fecha_iso se pasa, opera sobre ESE día. Sino, primero intenta el más
+    reciente y, si el folio no aparece ahí, busca en los otros días disponibles
+    (UX: el operador puede decir "acepta el folio 14" sin recordar el día).
+    """
     from .control_documentos import (
         aceptar_folio, cancelar_folio, reactivar_folio, ESTADO_ICON,
     )
+    from .estado_pedido import listar_fechas_disponibles
 
     if not folios:
         msg = f"⚠️ ¿Qué folio(s) quieres {accion}? Dime el número."
@@ -498,10 +505,24 @@ def _control_estado(phone: str, folios: list, accion: str) -> dict:
               "cancelar": "❌ Folios cancelados",
               "reactivar": "🔄 Folios reactivados"}[accion]
 
+    # Si no nos dieron fecha explícita, búsqueda multi-día: probar más reciente
+    # y si el folio no existe, escanear los demás días.
+    fechas_a_probar: list[str | None]
+    if fecha_iso:
+        fechas_a_probar = [fecha_iso]
+    else:
+        fechas_a_probar = [None] + [d for d in listar_fechas_disponibles()]
+
     resultados = []
     lines = [f"*{titulo}:*"]
     for f in folios:
-        r = op(f)
+        r = None
+        for fi in fechas_a_probar:
+            r_try = op(f, fecha_iso=fi)
+            if r_try.get("ok"):
+                r = r_try
+                break
+            r = r_try  # guardar último error como fallback
         resultados.append(r)
         if r.get("ok"):
             ic = ESTADO_ICON.get(r["nuevo"], "?")

@@ -514,9 +514,18 @@ def interpret_message(text: str | None = None, attachment_path: Path | None = No
         }
 
 
-def load_conversation(phone: str) -> list:
-    """Carga el historial de conversación con un contacto."""
-    conv_file = config.CONVERSATIONS_DIR / f"{phone}.json"
+def _conversation_file(phone: str, agent_id: str | None) -> Path:
+    """Path al archivo de conversación. Aislado por agente cuando se especifica."""
+    safe_phone = str(phone).replace("/", "_").replace("\\", "_")
+    if agent_id:
+        safe_agent = str(agent_id).replace("/", "_").replace("\\", "_")
+        return config.CONVERSATIONS_DIR / f"{safe_agent}__{safe_phone}.json"
+    return config.CONVERSATIONS_DIR / f"{safe_phone}.json"
+
+
+def load_conversation(phone: str, agent_id: str | None = None) -> list:
+    """Carga el historial de conversación con un contacto (aislado por agente)."""
+    conv_file = _conversation_file(phone, agent_id)
     if not conv_file.exists():
         return []
     try:
@@ -525,15 +534,16 @@ def load_conversation(phone: str) -> list:
         return []
 
 
-def save_conversation(phone: str, messages: list):
-    """Guarda el historial de conversación."""
-    conv_file = config.CONVERSATIONS_DIR / f"{phone}.json"
+def save_conversation(phone: str, messages: list, agent_id: str | None = None):
+    """Guarda el historial de conversación (aislado por agente)."""
+    conv_file = _conversation_file(phone, agent_id)
     # Limitar a últimos 20 turnos para no crecer indefinido
     messages = messages[-20:]
     conv_file.write_text(json.dumps(messages, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def chat(phone: str, text: str, attachment_path: Path | None = None) -> dict:
+def chat(phone: str, text: str, attachment_path: Path | None = None,
+         agent_id: str | None = None, agent_addendum: str | None = None) -> dict:
     """Procesa un mensaje (texto y/o adjunto) a través de Claude.
 
     Soporta texto, imagen (jpg/png/webp), PDF y Excel (xlsx/xls).
@@ -544,12 +554,14 @@ def chat(phone: str, text: str, attachment_path: Path | None = None) -> dict:
     Inyecta automáticamente el estado del pedido del día (si existe) para que
     Claude pueda responder consultas tipo "qué hospitales pidieron mamey".
     """
-    history = load_conversation(phone)
+    history = load_conversation(phone, agent_id=agent_id)
 
     # Si hay estado del día procesado, inyectarlo como contexto en el mensaje.
     # Si el operador menciona explícitamente otro día ("del 28", "ayer", etc.) y ese
     # día tiene estado guardado, usamos ESE en lugar del más reciente.
     text_para_ai = text or ""
+    if agent_id:
+        text_para_ai = f"[AGENTE ACTIVO: {agent_id}]\n{text_para_ai}"
     try:
         from .estado_pedido import (
             cargar_estado, cargar_estado_mas_reciente, estado_a_contexto_ai,
@@ -586,7 +598,7 @@ def chat(phone: str, text: str, attachment_path: Path | None = None) -> dict:
         user_content = f"{user_content}\n{suffix}".strip()
     history.append({"role": "user", "content": user_content})
     history.append({"role": "assistant", "content": reply})
-    save_conversation(phone, history)
+    save_conversation(phone, history, agent_id=agent_id)
     return result
 
 

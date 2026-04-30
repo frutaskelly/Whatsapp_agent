@@ -744,6 +744,74 @@
     display: flex; gap: var(--space-2); justify-content: flex-end;
   }
 
+  /* ── Ventas (KPIs + chart) ─────────────────────────────────── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: var(--space-3);
+    margin-bottom: var(--space-5);
+  }
+  .kpi-card {
+    background: var(--bg-1);
+    border: 0.5px solid var(--separator-soft);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4) var(--space-5);
+    box-shadow: var(--shadow-1);
+  }
+  .kpi-card .label {
+    color: var(--text-2); font-size: var(--fs-caption);
+    text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600;
+    margin-bottom: var(--space-2);
+  }
+  .kpi-card .value {
+    color: var(--text-1);
+    font-size: var(--fs-largetitle); line-height: var(--lh-largetitle);
+    font-weight: 700; letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .kpi-card .sub {
+    color: var(--text-2); font-size: var(--fs-caption); margin-top: var(--space-1);
+  }
+  .kpi-card.accent .value { color: var(--accent); }
+  .kpi-card.success .value { color: var(--success); }
+
+  .ventas-chart {
+    width: 100%; height: 280px;
+    background: var(--bg-base);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+    overflow: hidden;
+  }
+  .ventas-chart svg { width: 100%; height: 100%; display: block; }
+  .ventas-chart .gridline { stroke: var(--separator-soft); stroke-width: 0.5; }
+  .ventas-chart .axis { fill: var(--text-3); font-size: 10px; font-family: var(--font-mono); }
+  .ventas-chart .area { fill: var(--accent-soft); }
+  .ventas-chart .line { fill: none; stroke: var(--accent); stroke-width: 2; }
+  .ventas-chart .point { fill: var(--accent); }
+  .ventas-chart .point.zero { fill: var(--bg-3); }
+
+  .top-bar-row {
+    display: grid; grid-template-columns: 1fr 220px 100px;
+    gap: var(--space-3); align-items: center;
+    padding: var(--space-2) 0;
+    border-bottom: 0.5px solid var(--separator-soft);
+  }
+  .top-bar-row:last-child { border-bottom: none; }
+  .top-bar-row .destino { color: var(--text-1); font-size: var(--fs-callout); }
+  .top-bar-row .bar-track {
+    height: 6px; background: var(--bg-2); border-radius: var(--radius-pill);
+    overflow: hidden;
+  }
+  .top-bar-row .bar-fill {
+    height: 100%; background: var(--accent);
+    border-radius: var(--radius-pill);
+    transition: width var(--t-base) var(--ease);
+  }
+  .top-bar-row .monto {
+    color: var(--text-1); font-size: var(--fs-callout); font-weight: 600;
+    text-align: right; font-variant-numeric: tabular-nums;
+  }
+
   /* ── Reportes ──────────────────────────────────────────────── */
   .reports-table {
     width: 100%; border-collapse: collapse;
@@ -954,6 +1022,7 @@
   <nav class="sidebar">
     <div class="group-label">Operación</div>
     <div class="nav-item" data-view="dashboard"><span class="ico">📅</span><span>Dashboard</span></div>
+    <div class="nav-item" data-view="ventas"><span class="ico">📈</span><span>Ventas</span></div>
     <div class="nav-item active" data-view="sandbox"><span class="ico">💬</span><span>WhatsApp Sandbox</span></div>
     <div class="nav-item" data-view="reports"><span class="ico">📋</span><span>Reportes</span></div>
 
@@ -979,6 +1048,41 @@
       <div class="dashboard-scroll">
         <h2>📅 Días procesados</h2>
         <div id="dashboard-content"><div class="empty">Cargando…</div></div>
+      </div>
+    </section>
+
+    <!-- ▸ Vista: Ventas ───────────────────────────────────────── -->
+    <section class="view" id="view-ventas">
+      <div class="dashboard-scroll">
+        <h2>📈 Ventas</h2>
+        <div class="subtitle">Monto total y desglose. Default: mes actual.</div>
+
+        <div class="editor-toolbar">
+          <label>Desde</label>
+          <input type="date" id="ventas-desde">
+          <label>Hasta</label>
+          <input type="date" id="ventas-hasta">
+          <label>Agente</label>
+          <select id="ventas-agent" class="agent-select">
+            <option value="">Todos</option>
+          </select>
+          <button class="btn" id="ventas-aplicar">Aplicar</button>
+          <span class="save-status saved" id="ventas-status" style="margin-left:auto">listo</span>
+        </div>
+
+        <div class="kpi-grid" id="ventas-kpis"></div>
+
+        <div class="ds-section">
+          <h3>Tendencia diaria</h3>
+          <div class="ds-desc" id="ventas-chart-meta">Total facturado por día (regular + extras).</div>
+          <div id="ventas-chart" class="ventas-chart"></div>
+        </div>
+
+        <div class="ds-section">
+          <h3>Top destinos</h3>
+          <div class="ds-desc">Hospitales/comedores ordenados por monto en el rango.</div>
+          <div id="ventas-top"></div>
+        </div>
       </div>
     </section>
 
@@ -1032,13 +1136,25 @@
     <section class="view" id="view-precios">
       <div class="editor-scroll">
         <h2>💲 Lista de precios</h2>
-        <div class="subtitle" id="precios-meta">Cargando…</div>
+        <div class="subtitle">
+          Catálogos independientes. Cada lista se asigna a uno o más agentes.
+          Las re-asignaciones solo afectan a remisiones FUTURAS — las ya emitidas
+          conservan los precios usados al momento de generarlas.
+        </div>
+        <div class="editor-toolbar">
+          <label>Lista activa:</label>
+          <select id="precios-lista-selector" class="agent-select"></select>
+          <button class="btn secondary" id="precios-nueva">+ Nueva lista</button>
+          <button class="btn ghost small" id="precios-meta-edit">✎ Renombrar</button>
+          <button class="btn ghost small" id="precios-soft-delete">🗑 Desactivar</button>
+        </div>
         <div class="editor-toolbar">
           <input type="text" id="precios-filter" placeholder="Buscar producto…">
           <button class="btn secondary" id="precios-add">+ Nuevo producto</button>
           <button class="btn" id="precios-save" disabled>💾 Guardar cambios</button>
           <span class="save-status saved" id="precios-status">sin cambios</span>
         </div>
+        <div class="subtitle" id="precios-meta-info" style="margin-bottom:var(--space-3)"></div>
         <div id="precios-content"></div>
       </div>
     </section>
@@ -1342,6 +1458,7 @@ document.querySelectorAll('nav.sidebar .nav-item[data-view]').forEach(item => {
     if (v === 'precios') loadPrecios();
     if (v === 'clientes') loadClientes();
     if (v === 'agentes') loadAgentes();
+    if (v === 'ventas') loadVentas();
     // 'design' es estática (sin fetch)
   });
 });
@@ -1395,6 +1512,8 @@ document.addEventListener('change', (e) => {
     _agenteActivo = e.target.value;
     localStorage.setItem('frutaskelly.agente_activo', _agenteActivo);
     updateAgentMeta();
+    // Refrescar sandbox para cargar conversación de ESE agente
+    if (currentView === 'sandbox') loadSandbox();
   }
 });
 
@@ -1614,9 +1733,10 @@ $('action-consolidar').addEventListener('click', async () => {
 // ─── Sandbox: feed + events + composer ─────────────────────────
 async function loadSandbox() {
   try {
+    const aq = _agenteActivo ? `&agent_id=${encodeURIComponent(_agenteActivo)}` : '';
     const [rm, re] = await Promise.all([
-      fetch('/api/messages?limit=200'),
-      fetch('/api/events?limit=200'),
+      fetch(`/api/messages?limit=200${aq}`),
+      fetch(`/api/events?limit=200${aq}`),
     ]);
     if (!rm.ok) throw new Error('HTTP ' + rm.status);
     const dm = await rm.json();
@@ -1916,38 +2036,160 @@ $('reports-filter').addEventListener('input', applyFilterSort);
 $('reports-tipo-filter').addEventListener('change', applyFilterSort);
 $('reports-estado-filter').addEventListener('change', applyFilterSort);
 
-// ─── Lista de precios (editable) ───────────────────────────────
+// ─── Lista de precios (multi-lista, editable) ─────────────────
 let _precios = [];
 let _preciosOrig = '';
+let _listasCatalogo = [];   // [{id, nombre, descripcion, activa, items, existe}, ...]
+let _preciosListaActiva = null;
+
 function setPreciosStatus(text, klass) {
   const el = $('precios-status');
   el.textContent = text;
   el.className = 'save-status ' + (klass || 'saved');
   $('precios-save').disabled = (klass !== 'dirty');
 }
-function preciosDirty() {
-  return JSON.stringify(_precios) !== _preciosOrig;
-}
+function preciosDirty() { return JSON.stringify(_precios) !== _preciosOrig; }
 function checkPreciosDirty() {
-  if (preciosDirty()) setPreciosStatus('cambios sin guardar', 'dirty');
-  else setPreciosStatus('sin cambios', 'saved');
+  setPreciosStatus(preciosDirty() ? 'cambios sin guardar' : 'sin cambios',
+                    preciosDirty() ? 'dirty' : 'saved');
 }
+
+async function loadListasCatalogo() {
+  try {
+    const r = await fetch('/api/listas-precios');
+    const d = await r.json();
+    _listasCatalogo = d.listas || [];
+  } catch (e) { _listasCatalogo = []; }
+}
+
+function renderListasSelector() {
+  const sel = $('precios-lista-selector');
+  if (!_listasCatalogo.length) {
+    sel.innerHTML = '<option value="">— sin listas —</option>';
+    return;
+  }
+  if (!_preciosListaActiva || !_listasCatalogo.find(l => l.id === _preciosListaActiva)) {
+    _preciosListaActiva = _listasCatalogo[0].id;
+  }
+  sel.innerHTML = _listasCatalogo.map(l => {
+    const sufix = l.activa === false ? '  · INACTIVA' : '';
+    return `<option value="${escape(l.id)}" ${l.id === _preciosListaActiva ? 'selected' : ''}>${escape(l.nombre)}${sufix}</option>`;
+  }).join('');
+}
+
+function renderListaMetaInfo() {
+  const l = _listasCatalogo.find(x => x.id === _preciosListaActiva);
+  if (!l) { $('precios-meta-info').textContent = ''; return; }
+  const estadoBadge = l.activa === false
+    ? '<span class="ds-badge b-red">desactivada</span>'
+    : '<span class="ds-badge b-green">activa</span>';
+  $('precios-meta-info').innerHTML =
+    `${estadoBadge} · ID: <span class="code-pill">${escape(l.id)}</span> · ` +
+    `<b>${l.items}</b> productos · archivo: <span class="code-pill">${escape(l.archivo)}</span>` +
+    (l.descripcion ? ` · ${escape(l.descripcion)}` : '');
+}
+
 async function loadPrecios() {
+  await loadListasCatalogo();
+  if (!_preciosListaActiva && _listasCatalogo[0]) _preciosListaActiva = _listasCatalogo[0].id;
+  renderListasSelector();
+  renderListaMetaInfo();
+  await loadPreciosItems();
+}
+
+async function loadPreciosItems() {
   const el = $('precios-content');
   el.innerHTML = '<div class="empty">Cargando…</div>';
   try {
-    const r = await fetch('/api/lista-precios');
+    const id = encodeURIComponent(_preciosListaActiva || '');
+    const r = await fetch(`/api/lista-precios?id=${id}`);
+    if (!r.ok) {
+      const d = await r.json();
+      throw new Error(d.error || 'no se pudo cargar');
+    }
     const d = await r.json();
-    if (d.error) throw new Error(d.error);
     _precios = d.items;
     _preciosOrig = JSON.stringify(_precios);
-    $('precios-meta').textContent = `${d.total_items} productos · archivo: ${d.path}`;
     setPreciosStatus('sin cambios', 'saved');
     renderPrecios();
   } catch (e) {
-    el.innerHTML = `<div class="empty">Error: ${escape(e.message)}</div>`;
+    el.innerHTML = `<div class="empty">${escape(e.message)}</div>`;
+    _precios = [];
+    _preciosOrig = '[]';
   }
 }
+
+$('precios-lista-selector').addEventListener('change', async (e) => {
+  if (preciosDirty() && !confirm('Hay cambios sin guardar en la lista actual. ¿Cambiar de todos modos?')) {
+    e.target.value = _preciosListaActiva;
+    return;
+  }
+  _preciosListaActiva = e.target.value;
+  renderListaMetaInfo();
+  await loadPreciosItems();
+});
+
+$('precios-nueva').addEventListener('click', async () => {
+  const nombre = prompt('Nombre de la nueva lista de precios:', 'Lista nueva');
+  if (!nombre) return;
+  const id = prompt('ID interno (solo letras/números/_/-):', nombre.toUpperCase().replace(/[^A-Z0-9]/g, '_'));
+  if (!id) return;
+  const desc = prompt('Descripción (opcional):', '');
+  const clonarDe = confirm('¿Clonar productos desde la lista actual? (Aceptar = clonar, Cancelar = lista vacía)')
+    ? _preciosListaActiva : null;
+  try {
+    const r = await fetch('/api/listas-precios', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({id, nombre, descripcion: desc, copiar_de: clonarDe}),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'error');
+    _preciosListaActiva = id;
+    await loadPrecios();
+  } catch (e) {
+    alert('Error creando lista: ' + e.message);
+  }
+});
+
+$('precios-meta-edit').addEventListener('click', async () => {
+  if (!_preciosListaActiva) return;
+  const l = _listasCatalogo.find(x => x.id === _preciosListaActiva);
+  if (!l) return;
+  const nombre = prompt('Nuevo nombre:', l.nombre);
+  if (nombre === null) return;
+  const desc = prompt('Descripción:', l.descripcion || '');
+  if (desc === null) return;
+  try {
+    const r = await fetch(`/api/listas-precios/${encodeURIComponent(l.id)}/meta`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({nombre, descripcion: desc}),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'error');
+    await loadPrecios();
+  } catch (e) { alert('Error: ' + e.message); }
+});
+
+$('precios-soft-delete').addEventListener('click', async () => {
+  if (!_preciosListaActiva) return;
+  const l = _listasCatalogo.find(x => x.id === _preciosListaActiva);
+  if (!l) return;
+  const nuevoEstado = !(l.activa !== false);
+  const verbo = nuevoEstado ? 'reactivar' : 'desactivar';
+  if (!confirm(`¿${verbo} la lista "${l.nombre}"? Las remisiones ya emitidas no se afectan; solo cambia disponibilidad para futuras.`)) return;
+  try {
+    const r = await fetch(`/api/listas-precios/${encodeURIComponent(l.id)}/meta`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({activa: nuevoEstado}),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'error');
+    await loadPrecios();
+  } catch (e) { alert('Error: ' + e.message); }
+});
 function renderPrecios() {
   const q = $('precios-filter').value.toLowerCase().trim();
   const visibles = _precios
@@ -2020,12 +2262,15 @@ $('precios-save').addEventListener('click', async () => {
     const r = await fetch('/api/lista-precios', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({items: _precios}),
+      body: JSON.stringify({id: _preciosListaActiva, items: _precios}),
     });
     const d = await r.json();
     if (!d.ok) throw new Error(d.error || 'error desconocido');
     _preciosOrig = JSON.stringify(_precios);
     setPreciosStatus(`✓ guardado (${d.items_guardados} productos · backup: ${d.backup})`, 'saved');
+    // Refrescar catálogo (item count may have changed)
+    await loadListasCatalogo();
+    renderListaMetaInfo();
     setTimeout(() => setPreciosStatus('sin cambios', 'saved'), 4000);
   } catch (e) {
     setPreciosStatus(`✗ error: ${e.message}`, 'error');
@@ -2164,6 +2409,143 @@ $('clientes-save').addEventListener('click', async () => {
     setClientesStatus(`✗ error: ${e.message}`, 'error');
   }
 });
+
+// ─── Vista Ventas ──────────────────────────────────────────────
+function fmtFecha(iso) {
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString('es-MX', {day: 'numeric', month: 'short'});
+}
+
+function renderVentasChart(serie) {
+  const el = $('ventas-chart');
+  if (!serie.length) { el.innerHTML = '<div class="empty">Sin datos en el rango.</div>'; return; }
+  const W = 800, H = 240, P = {top: 16, right: 20, bottom: 30, left: 60};
+  const innerW = W - P.left - P.right;
+  const innerH = H - P.top - P.bottom;
+  const maxY = Math.max(...serie.map(d => d.total), 1) * 1.1;
+  const xStep = serie.length > 1 ? innerW / (serie.length - 1) : 0;
+  const x = (i) => P.left + i * xStep;
+  const y = (v) => P.top + innerH - (v / maxY) * innerH;
+
+  // Path del área
+  const linePts = serie.map((d, i) => `${x(i)},${y(d.total)}`).join(' L');
+  const areaPath = `M${x(0)},${P.top + innerH} L${linePts} L${x(serie.length - 1)},${P.top + innerH} Z`;
+  const linePath = `M${linePts}`;
+
+  // Gridlines + labels Y (4 ticks)
+  const yTicks = [];
+  for (let i = 0; i <= 4; i++) {
+    const v = (maxY / 4) * i;
+    const yp = y(v);
+    yTicks.push(`<line class="gridline" x1="${P.left}" y1="${yp}" x2="${W - P.right}" y2="${yp}"/>` +
+                `<text class="axis" x="${P.left - 6}" y="${yp + 3}" text-anchor="end">$${Math.round(v).toLocaleString('es-MX')}</text>`);
+  }
+  // Labels X (cada N para no saturar)
+  const everyN = Math.max(1, Math.ceil(serie.length / 8));
+  const xLabels = serie.map((d, i) =>
+    i % everyN === 0
+      ? `<text class="axis" x="${x(i)}" y="${H - 10}" text-anchor="middle">${escape(fmtFecha(d.fecha))}</text>`
+      : ''
+  ).join('');
+  const points = serie.map((d, i) =>
+    `<circle class="point ${d.total === 0 ? 'zero' : ''}" cx="${x(i)}" cy="${y(d.total)}" r="${d.total === 0 ? 2 : 3.5}">
+       <title>${escape(d.fecha)} · $${d.total.toLocaleString('es-MX',{minimumFractionDigits:2})}</title>
+     </circle>`
+  ).join('');
+
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+    ${yTicks.join('')}
+    <path class="area" d="${areaPath}"/>
+    <path class="line" d="${linePath}"/>
+    ${points}
+    ${xLabels}
+  </svg>`;
+}
+
+function renderVentasKpis(kpi, rango) {
+  const dias = (new Date(rango.hasta) - new Date(rango.desde)) / 86400000 + 1;
+  $('ventas-kpis').innerHTML = `
+    <div class="kpi-card success">
+      <div class="label">Total facturado</div>
+      <div class="value">${fmtMoney(kpi.total)}</div>
+      <div class="sub">${dias} día(s) · ${kpi.n_dias_con_ventas} con ventas</div>
+    </div>
+    <div class="kpi-card">
+      <div class="label">Regular</div>
+      <div class="value">${fmtMoney(kpi.regular)}</div>
+      <div class="sub">${kpi.total > 0 ? Math.round(kpi.regular/kpi.total*100) : 0}% del total</div>
+    </div>
+    <div class="kpi-card">
+      <div class="label">Extras</div>
+      <div class="value">${fmtMoney(kpi.extras)}</div>
+      <div class="sub">${kpi.total > 0 ? Math.round(kpi.extras/kpi.total*100) : 0}% del total</div>
+    </div>
+    <div class="kpi-card accent">
+      <div class="label">Remisiones</div>
+      <div class="value">${kpi.n_remisiones}</div>
+      <div class="sub">${kpi.n_destinos} destino(s) único(s)</div>
+    </div>
+    <div class="kpi-card">
+      <div class="label">Ticket promedio</div>
+      <div class="value">${fmtMoney(kpi.ticket_promedio)}</div>
+      <div class="sub">por remisión</div>
+    </div>`;
+}
+
+function renderVentasTop(top, totalRango) {
+  const el = $('ventas-top');
+  if (!top.length) { el.innerHTML = '<div class="empty">Sin datos.</div>'; return; }
+  const max = top[0].total || 1;
+  el.innerHTML = top.slice(0, 25).map(h => {
+    const pct = (h.total / max) * 100;
+    const pctTotal = totalRango > 0 ? (h.total / totalRango) * 100 : 0;
+    return `<div class="top-bar-row">
+      <div class="destino">${escape(h.destino)}</div>
+      <div><div class="bar-track"><div class="bar-fill" style="width:${pct.toFixed(1)}%"></div></div></div>
+      <div class="monto">${fmtMoney(h.total)} <span style="color:var(--text-2);font-size:var(--fs-caption);font-weight:400">${pctTotal.toFixed(1)}%</span></div>
+    </div>`;
+  }).join('');
+}
+
+async function loadVentas() {
+  // Init dates si están vacías
+  if (!$('ventas-desde').value || !$('ventas-hasta').value) {
+    const hoy = new Date();
+    const primero = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    $('ventas-desde').value = primero.toISOString().slice(0, 10);
+    $('ventas-hasta').value = hoy.toISOString().slice(0, 10);
+  }
+  // Populate agent dropdown si no
+  const sel = $('ventas-agent');
+  if (sel.options.length <= 1 && _agentes.length) {
+    sel.innerHTML = '<option value="">Todos</option>' +
+      _agentes.map(a => `<option value="${escape(a.id)}">${escape(a.icono || '🤖')} ${escape(a.nombre)}</option>`).join('');
+  }
+  $('ventas-status').textContent = 'cargando…';
+  $('ventas-status').className = 'save-status saving';
+  try {
+    const params = new URLSearchParams({
+      desde: $('ventas-desde').value,
+      hasta: $('ventas-hasta').value,
+    });
+    if (sel.value) params.append('agent_id', sel.value);
+    const r = await fetch('/api/ventas?' + params.toString());
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    renderVentasKpis(d.kpi, {desde: d.desde, hasta: d.hasta});
+    renderVentasChart(d.serie_diaria);
+    renderVentasTop(d.top_hospitales, d.kpi.total);
+    $('ventas-chart-meta').textContent =
+      `Total ${fmtMoney(d.kpi.total)} · ${d.serie_diaria.length} días entre ${d.desde} y ${d.hasta}` +
+      (sel.value ? ` · agente: ${sel.value}` : '');
+    $('ventas-status').textContent = '✓ ' + d.kpi.n_remisiones + ' remisiones';
+    $('ventas-status').className = 'save-status saved';
+  } catch (e) {
+    $('ventas-status').textContent = '✗ ' + e.message;
+    $('ventas-status').className = 'save-status error';
+  }
+}
+$('ventas-aplicar').addEventListener('click', loadVentas);
 
 // ─── Copiar todos los eventos ──────────────────────────────────
 $('copy-events-json').addEventListener('click', async (e) => {

@@ -52,7 +52,12 @@ def create_app():
             limit = int(request.args.get("limit", 200))
         except ValueError:
             limit = 200
-        return jsonify({"messages": message_log.read_messages(limit)})
+        agent_id = (request.args.get("agent_id") or "").strip() or None
+        msgs = message_log.read_messages(limit if not agent_id else 1000)
+        if agent_id:
+            msgs = [m for m in msgs if (m.get("meta") or {}).get("agent_id") == agent_id]
+            msgs = msgs[-limit:]
+        return jsonify({"messages": msgs, "filtered_agent_id": agent_id})
 
     @app.route("/api/events")
     def api_events():
@@ -60,7 +65,12 @@ def create_app():
             limit = int(request.args.get("limit", 200))
         except ValueError:
             limit = 200
-        return jsonify({"events": event_log.read_events(limit)})
+        agent_id = (request.args.get("agent_id") or "").strip() or None
+        evs = event_log.read_events(limit if not agent_id else 1000)
+        if agent_id:
+            evs = [e for e in evs if (e.get("meta") or {}).get("agent_id") == agent_id]
+            evs = evs[-limit:]
+        return jsonify({"events": evs, "filtered_agent_id": agent_id})
 
     @app.route("/api/consolidar-notas", methods=["POST", "GET"])
     def api_consolidar_notas():
@@ -214,7 +224,11 @@ def create_app():
         message_log.log_message("in", phone, "text", in_body, in_meta)
 
         try:
-            result = ai_chat(phone, text, attachment_path=attachment_path)
+            result = ai_chat(
+                phone, text, attachment_path=attachment_path,
+                agent_id=(agente_activo or {}).get("id"),
+                agent_addendum=(agente_activo or {}).get("system_prompt_addendum"),
+            )
         except Exception as e:
             log.exception(f"Error en /api/simulate: {e}")
             err = f"Error: {e}"
@@ -415,18 +429,167 @@ def create_app():
         remisiones.sort(key=lambda r: (r["fecha_iso"], -r["folio"] if r["folio"] else 0), reverse=True)
         return jsonify({"remisiones": remisiones})
 
-    # ─── Lista de precios (editable) ────────────────────────────────────────
-    @app.route("/api/lista-precios", methods=["GET"])
-    def api_lista_precios_get():
-        """Lee la lista de precios actual y devuelve los renglones editables."""
+    # ─── Listas de precios (catálogo multi-lista) ───────────────────────────
+    def _resolver_lista_path(lista_id: str | None) -> "Path | None":
+        """Devuelve el path xlsx de la lista pedida.
+
+        Si lista_id es None, devuelve la lista por default (LISTA_PRECIOS_PATH).
+        Resuelve desde agentes.json → listas_precios_archivos.
+        """
+        from pathlib import Path
+        if not lista_id or lista_id == "default":
+            return Path(config.LISTA_PRECIOS_PATH)
+        data = _cargar_agentes_data()
+        archivos = data.get("listas_precios_archivos") or {}
+        rel = archivos.get(lista_id)
+        if not rel:
+            return None
+        p = Path(rel)
+        if not p.is_absolute():
+            p = Path(config.BASE_DIR) / rel
+        return p
+
+    @app.route("/api/listas-precios", methods=["GET"])
+    def api_listas_precios_catalog():
+        """Lista las listas de precios disponibles (catálogo)."""
         import openpyxl
         from pathlib import Path
-        path = Path(config.LISTA_PRECIOS_PATH)
-        if not path.exists():
-            return jsonify({"error": "Lista de precios no encontrada", "path": str(path)}), 404
+        data = _cargar_agentes_data()
+        archivos = data.get("listas_precios_archivos") or {}
+        meta = data.get("listas_precios_meta") or {}
+        out = []
+        for lid, rel in archivos.items():
+            p = Path(rel)
+            if not p.is_absolute():
+                p = Path(config.BASE_DIR) / rel
+            existe = p.exists()
+            n_items = 0
+            if existe:
+                try:
+                    wb = openpyxl.load_workbook(p, data_only=True, read_only=True)
+                    ws = wb["Lista de Precios"] if "Lista de Precios" in wb.sheetnames else wb.active
+                    for row in ws.iter_rows(min_row=2, values_only=True):
+                        if any(v is not None for v in row): n_items += 1
+                    wb.close()
+                except Exception:
+                    pass
+            m = meta.get(lid, {})
+            out.append({
+                "id": lid,
+                "archivo": rel,
+                "existe": existe,
+                "items": n_items,
+                "nombre": m.get("nombre", lid),
+                "descripcion": m.get("descripcion", ""),
+                "activa": m.get("activa", True),
+                "creada": m.get("creada"),
+            })
+        return jsonify({"listas": out})
+
+    @app.route("/api/listas-precios", methods=["POST"])
+    def api_listas_precios_crear():
+        """Crea una nueva lista de precios (xlsx vacío con headers + entrada en catálogo)."""
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill
+        from datetime import datetime as _dt
+        from pathlib import Path
+        import json as _json
+
+        body = request.get_json(silent=True) or {}
+        lista_id = (body.get("id") or "").strip()
+        nombre = (body.get("nombre") or "").strip()
+        descripcion = (body.get("descripcion") or "").strip()
+        copiar_de = (body.get("copiar_de") or "").strip() or None  # opcional: clonar otra lista
+
+        if not lista_id or not nombre:
+            return jsonify({"ok": False, "error": "id y nombre son requeridos"}), 400
+        # Sanitize ID
+        import re
+        if not re.match(r"^[A-Za-z0-9_-]+$", lista_id):
+            return jsonify({"ok": False, "error": "id solo puede tener letras, números, _ o -"}), 400
+
+        agentes_data = _cargar_agentes_data()
+        archivos = agentes_data.get("listas_precios_archivos") or {}
+        if lista_id in archivos:
+            return jsonify({"ok": False, "error": f"ya existe una lista con id '{lista_id}'"}), 400
+
+        rel_path = f"data/Lista_Precios_{lista_id}.xlsx"
+        abs_path = Path(config.BASE_DIR) / rel_path
+        abs_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Crear xlsx (vacío o clonado)
+        if copiar_de:
+            src = _resolver_lista_path(copiar_de)
+            if src and src.exists():
+                import shutil
+                shutil.copy2(src, abs_path)
+            else:
+                copiar_de = None
+        if not copiar_de:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Lista de Precios"
+            headers = ["#", "Producto", "Unidad", "Precio Unitario"]
+            for i, h in enumerate(headers, 1):
+                c = ws.cell(row=1, column=i, value=h)
+                c.font = Font(bold=True, color="FFFFFF")
+                c.fill = PatternFill("solid", fgColor="1F4E79")
+            ws.column_dimensions["A"].width = 6
+            ws.column_dimensions["B"].width = 60
+            ws.column_dimensions["C"].width = 14
+            ws.column_dimensions["D"].width = 16
+            wb.save(abs_path)
+
+        # Actualizar agentes.json
+        archivos[lista_id] = rel_path
+        meta = agentes_data.get("listas_precios_meta") or {}
+        meta[lista_id] = {
+            "nombre": nombre,
+            "descripcion": descripcion,
+            "activa": True,
+            "creada": _dt.now().isoformat(timespec="seconds"),
+        }
+        agentes_data["listas_precios_archivos"] = archivos
+        agentes_data["listas_precios_meta"] = meta
+        _agentes_path().write_text(_json.dumps(agentes_data, ensure_ascii=False, indent=2),
+                                     encoding="utf-8")
+        log_event("system", f"💲 Nueva lista de precios creada: {lista_id}",
+                  {"nombre": nombre, "copiada_de": copiar_de})
+        return jsonify({"ok": True, "id": lista_id, "archivo": rel_path,
+                        "items": (1 if copiar_de else 0)})
+
+    @app.route("/api/listas-precios/<lista_id>/meta", methods=["POST"])
+    def api_listas_precios_meta(lista_id):
+        """Actualiza meta (nombre, descripción, activa) de una lista. Soft-delete via activa=false."""
+        import json as _json
+        body = request.get_json(silent=True) or {}
+        agentes_data = _cargar_agentes_data()
+        archivos = agentes_data.get("listas_precios_archivos") or {}
+        if lista_id not in archivos:
+            return jsonify({"ok": False, "error": "lista no existe"}), 404
+        meta_all = agentes_data.get("listas_precios_meta") or {}
+        m = meta_all.get(lista_id, {})
+        for k in ("nombre", "descripcion", "activa"):
+            if k in body:
+                m[k] = body[k]
+        meta_all[lista_id] = m
+        agentes_data["listas_precios_meta"] = meta_all
+        _agentes_path().write_text(_json.dumps(agentes_data, ensure_ascii=False, indent=2),
+                                     encoding="utf-8")
+        log_event("system", f"💲 Meta de lista '{lista_id}' actualizada", m)
+        return jsonify({"ok": True, "meta": m})
+
+    # ─── Lista de precios (editable, con multi-lista) ──────────────────────
+    @app.route("/api/lista-precios", methods=["GET"])
+    def api_lista_precios_get():
+        """Lee los renglones de la lista pedida (?id=ID o default)."""
+        import openpyxl
+        lista_id = (request.args.get("id") or "").strip() or None
+        path = _resolver_lista_path(lista_id)
+        if not path or not path.exists():
+            return jsonify({"error": "Lista no encontrada", "id": lista_id, "path": str(path)}), 404
         wb = openpyxl.load_workbook(path, data_only=True)
         ws = wb["Lista de Precios"] if "Lista de Precios" in wb.sheetnames else wb.active
-        # Header
         headers = [c.value for c in ws[1]]
         rows = []
         for row in ws.iter_rows(min_row=2, values_only=True):
@@ -440,6 +603,7 @@ def create_app():
             })
         wb.close()
         return jsonify({
+            "id": lista_id or "default",
             "path": str(path),
             "headers": headers,
             "items": rows,
@@ -461,12 +625,13 @@ def create_app():
 
         body = request.get_json(silent=True) or {}
         items = body.get("items") or []
+        lista_id = (body.get("id") or "").strip() or None
         if not items:
             return jsonify({"ok": False, "error": "No hay items para guardar"}), 400
 
-        path = Path(config.LISTA_PRECIOS_PATH)
-        if not path.exists():
-            return jsonify({"ok": False, "error": f"Lista no existe: {path}"}), 404
+        path = _resolver_lista_path(lista_id)
+        if not path or not path.exists():
+            return jsonify({"ok": False, "error": f"Lista no existe: {lista_id or 'default'}"}), 404
 
         # Backup automático
         ts = _dt.now().strftime("%Y%m%d_%H%M%S")
@@ -495,16 +660,20 @@ def create_app():
         wb.save(path)
         wb.close()
 
-        # Recargar cache de pricing en memoria
+        # Recargar cache si es la lista default
         from .pricing import cargar_lista_precios
-        cargar_lista_precios.cache_clear()
-        n_loaded = len(cargar_lista_precios())
+        n_loaded = 0
+        if not lista_id or str(path) == str(Path(config.LISTA_PRECIOS_PATH)):
+            cargar_lista_precios.cache_clear()
+            n_loaded = len(cargar_lista_precios())
 
-        log_event("system", f"💲 Lista de precios actualizada desde dashboard ({len(items)} items)",
-                  {"backup": backup_path.name, "items": len(items), "cargados": n_loaded})
+        log_event("system", f"💲 Lista '{lista_id or 'default'}' actualizada ({len(items)} items)",
+                  {"id": lista_id, "backup": backup_path.name, "items": len(items),
+                   "cargados_en_memoria": n_loaded})
 
         return jsonify({
             "ok": True,
+            "id": lista_id,
             "items_guardados": len(items),
             "items_cargados": n_loaded,
             "backup": backup_path.name,
@@ -638,6 +807,154 @@ def create_app():
         log_event("system", f"👥 Clientes actualizados desde dashboard ({len(clientes)} clientes)",
                   {"clientes": len(clientes)})
         return jsonify({"ok": True, "clientes_guardados": len(clientes)})
+
+    # ─── Ventas (agregaciones para dashboard) ──────────────────────────────
+    @app.route("/api/ventas")
+    def api_ventas():
+        """Agregaciones de ventas filtradas por rango de fechas.
+
+        Params:
+          desde=YYYY-MM-DD (default: primer día del mes actual)
+          hasta=YYYY-MM-DD (default: hoy)
+          agent_id=opcional
+        """
+        import json as _json
+        from datetime import date as _date, datetime as _dt
+        from pathlib import Path
+
+        # Default: mes actual
+        hoy = _date.today()
+        primer_dia_mes = hoy.replace(day=1)
+        desde_str = (request.args.get("desde") or "").strip() or primer_dia_mes.isoformat()
+        hasta_str = (request.args.get("hasta") or "").strip() or hoy.isoformat()
+        try:
+            desde = _date.fromisoformat(desde_str)
+            hasta = _date.fromisoformat(hasta_str)
+        except ValueError:
+            return jsonify({"error": "fechas inválidas (formato YYYY-MM-DD)"}), 400
+
+        agent_id = (request.args.get("agent_id") or "").strip() or None
+
+        pedidos_dir = Path(config.BASE_DIR) / "storage" / "pedidos_dia"
+        extras_dir = Path(config.BASE_DIR) / "storage" / "extras_dia"
+
+        # Map agent_id → cliente_id (si está pedido)
+        cliente_filter = None
+        if agent_id:
+            data_ag = _cargar_agentes_data()
+            for a in data_ag.get("agentes", []):
+                if a.get("id") == agent_id:
+                    cliente_filter = a.get("cliente_id")
+                    break
+
+        dias = []                       # serie temporal (para gráfica)
+        por_hospital: dict = {}        # totales por destino
+        remisiones: list = []           # detalle plano
+        total_dia_general = 0.0
+        n_remisiones = 0
+        total_regular = 0.0
+        total_extras = 0.0
+
+        # Iterar fechas en rango
+        from datetime import timedelta as _td
+        d = desde
+        while d <= hasta:
+            iso = d.isoformat()
+            dia_total = 0.0
+            dia_reg = 0.0
+            dia_ext = 0.0
+
+            sp = pedidos_dir / f"{iso}.json"
+            if sp.exists():
+                try:
+                    state = _json.loads(sp.read_text(encoding="utf-8"))
+                    for hospital, info in state.get("hospitales", {}).items():
+                        # Si filtramos por cliente, solo SUREÑA es comedores; EHMO incluye
+                        # todo lo regular. Para v1 si cliente_filter es SURENA saltamos
+                        # los hospitales (pertenecen a EHMO).
+                        if cliente_filter == "SURENA" and not (
+                            "comedor" in hospital.lower() or "almacén" in hospital.lower()
+                        ):
+                            continue
+                        total = info.get("total", 0)
+                        if total <= 0:
+                            continue
+                        dia_total += total; dia_reg += total
+                        n_remisiones += 1
+                        por_hospital[hospital] = por_hospital.get(hospital, 0.0) + total
+                        remisiones.append({
+                            "fecha_iso": iso,
+                            "destino": hospital,
+                            "tipo": "regular",
+                            "estado": info.get("estado", "vigente"),
+                            "folio": info.get("folio_remision"),
+                            "total": round(total, 2),
+                        })
+                except Exception:
+                    pass
+
+            ep = extras_dir / f"{iso}.json"
+            if ep.exists():
+                try:
+                    ex = _json.loads(ep.read_text(encoding="utf-8"))
+                    folios_dest = ex.get("folios_por_destino") or {}
+                    estados_dest = ex.get("estados_por_destino") or {}
+                    grupos: dict[str, list] = {}
+                    for e in ex.get("extras", []):
+                        if e.get("cantidad", 0) <= 0:
+                            continue
+                        grupos.setdefault(e.get("hospital", "ALMACÉN EHMO"), []).append(e)
+                    for destino, items in grupos.items():
+                        total = sum(it.get("importe", 0) for it in items)
+                        dia_total += total; dia_ext += total
+                        n_remisiones += 1
+                        nombre = f"{destino} (EXTRA)"
+                        por_hospital[nombre] = por_hospital.get(nombre, 0.0) + total
+                        remisiones.append({
+                            "fecha_iso": iso,
+                            "destino": nombre,
+                            "tipo": "extra",
+                            "estado": estados_dest.get(destino, "vigente"),
+                            "folio": folios_dest.get(destino),
+                            "total": round(total, 2),
+                        })
+                except Exception:
+                    pass
+
+            dias.append({
+                "fecha": iso,
+                "total": round(dia_total, 2),
+                "regular": round(dia_reg, 2),
+                "extras": round(dia_ext, 2),
+            })
+            total_dia_general += dia_total
+            total_regular += dia_reg
+            total_extras += dia_ext
+            d = d + _td(days=1)
+
+        # Top hospitales (orden desc por monto)
+        top_hospitales = sorted(
+            [{"destino": h, "total": round(v, 2)} for h, v in por_hospital.items()],
+            key=lambda x: -x["total"],
+        )
+
+        return jsonify({
+            "desde": desde_str,
+            "hasta": hasta_str,
+            "agent_id": agent_id,
+            "kpi": {
+                "total": round(total_dia_general, 2),
+                "regular": round(total_regular, 2),
+                "extras": round(total_extras, 2),
+                "n_remisiones": n_remisiones,
+                "n_destinos": len(por_hospital),
+                "ticket_promedio": round(total_dia_general / n_remisiones, 2) if n_remisiones else 0,
+                "n_dias_con_ventas": sum(1 for d in dias if d["total"] > 0),
+            },
+            "serie_diaria": dias,
+            "top_hospitales": top_hospitales,
+            "remisiones_count": len(remisiones),
+        })
 
     @app.route("/files/processed/<path:filename>")
     def serve_processed(filename):

@@ -83,10 +83,16 @@ def maybe_process(phone: str, attachment_path: Path | None, ai_result: dict,
     if attachment_path.suffix.lower() not in (".xlsx", ".xls"):
         return None
 
+    # Detectar si el operador YA confirmó reproceso explícito. Claude pone
+    # datos.confirmar_reproceso=true cuando detecta la frase exacta:
+    # "reprocesa el ... desde cero, sí estoy seguro" (o variantes).
+    force_overwrite = bool((ai_result.get("datos") or {}).get("confirmar_reproceso"))
+
     # Procesar
     try:
         result = procesar_pedido(attachment_path, config.PROCESSED_DIR,
-                                  original_filename=original_filename)
+                                  original_filename=original_filename,
+                                  force_overwrite=force_overwrite)
     except Exception as e:
         log.exception(f"Error procesando pedido: {e}")
         msg = f"⚠️ No pude procesar el pedido: {e}"
@@ -98,6 +104,14 @@ def maybe_process(phone: str, attachment_path: Path | None, ai_result: dict,
                "Por favor mándame el archivo original de EHMO con esa hoja.")
         message_log.log_message("out", phone, "text", msg, {"processed": False, "error": "no BD sheet"})
         return {"error": "no BD sheet"}
+
+    # Salvaguarda: día ya existente (NO se procesó). Avisar al operador.
+    if result.get("error") == "estado_existente":
+        msg = result["mensaje_para_operador"]
+        message_log.log_message("out", phone, "text", msg,
+                                 {"processed": False, "blocked_overwrite": True,
+                                  "fecha_iso": result.get("fecha_iso")})
+        return {"blocked_overwrite": True, "fecha_iso": result.get("fecha_iso")}
 
     output_path = result["output_path"]
     pdf_path = result.get("pdf_path")

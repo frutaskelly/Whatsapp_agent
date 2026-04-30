@@ -1,0 +1,143 @@
+{
+  "fecha": "2026-04-27",
+  "fecha_legible": "27 de abril",
+  "creado": "2026-04-29T16:38:05",
+  "ultima_modificacion": "2026-04-29T19:03:03",
+  "extras": [
+    {
+      "id": "c3f5590f",
+      "hospital": "ALMACÉN EHMO",
+      "alimento": "Comino entero",
+      "presentacion": "PZ 60g",
+      "cantidad": 2.0,
+      "precio_unitario": 59.5,
+      "importe": 119.0,
+      "motivo": "Extra para cubrir necesidades especiales",
+      "tiene_precio": true,
+      "agregado": "2026-04-29T16:38:05"
+    },
+    {
+      "id": "d6b381c5",
+      "hospital": "ALMACÉN EHMO",
+      "alimento": "Comino molido",
+      "presentacion": "PZ 60g",
+      "cantidad": 4.0,
+      "precio_unitario": 79.5,
+      "importe": 318.0,
+      "motivo": "Extra para cubrir necesidades especiales",
+      "tiene_precio": true,
+      "agregado": "2026-04-29T16:38:05"
+    },
+    {
+      "id": "22e0fb35",
+      "hospital": "ALMACÉN EHMO",
+      "alimento": "Avena integral",
+      "presentacion": "KILO",
+      "cantidad": 4.0,
+      "precio_unitario": 44.8,
+      "importe": 179.2,
+      "motivo": "Extra para cubrir necesidades especiales",
+      "tiene_precio": true,
+      "agregado": "2026-04-29T16:38:05"
+    },
+    {
+      "id": "468ff707",
+      "hospital": "ALMACÉN EHMO",
+      "alimento": "Frijol bayo",
+      "presentacion": "KILO",
+      "cantidad": 39.0,
+      "precio_unitario": 58.8,
+      "importe": 2293.2,
+      "motivo": "Extra para cubrir necesidades especiales",
+      "tiene_precio": true,
+      "agregado": "2026-04-29T16:38:05"
+    },
+    {
+      "id": "65c0aae1",
+      "hospital": "ALMACÉN EHMO",
+      "alimento": "Fórmula de inicio etapa 1 polvo 400g NAN",
+      "presentacion": "PZ",
+      "cantidad": 10.0,
+      "precio_unitario": 306.6,
+      "importe": 3066.0,
+      "motivo": "Extra para cubrir necesidades especiales",
+      "tiene_precio": true,
+      "agregado": "2026-04-29T16:38:05"
+    },
+    {
+      "id": "e29b207e",
+      "hospital": "ALMACÉN EHMO",
+      "alimento": "Gelatina sin azúcar",
+      "presentacion": "PZ",
+      "cantidad": 50.0,
+      "precio_unitario": 23.8,
+      "importe": 1190.0,
+      "motivo": "Extra para cubrir necesidades especiales",
+      "tiene_precio": true,
+      "agregado": "2026-04-29T16:38:05"
+    },
+    {
+      "id": "c1d3a894",
+      "hospital": "ALMACÉN EHMO",
+      "alimento": "Pimienta molida negra",
+      "presentacion": "PZ 60g",
+      "cantidad": 10.0,
+      "precio_unitario": 103.5,
+      "importe": 1035.0,
+      "motivo": "Extra para cubrir necesidades especiales",
+      "tiene_precio": true,
+      "agregado": "2026-04-29T16:38:05"
+    },
+    {
+      "id": "5302397c",
+      "hospital": "ALMACÉN EHMO",
+      "alimento": "Pimienta entera negra",
+      "presentacion": "PZ 60g",
+      "cantidad": 4.0,
+      "precio_unitario": 103.5,
+      "importe": 414.0,
+      "motivo": "Extra para cubrir necesidades especiales",
+      "tiene_precio": true,
+      "agregado": "2026-04-29T16:38:05"
+    },
+    {
+      "id": "026be336",
+      "hospital": "ALMACÉN EHMO",
+      "alimento": "Miel de abeja",
+      "presentacion": "PZ",
+      "cantidad": 1.0,
+      "precio_unitario": 128.8,
+      "importe": 128.8,
+      "motivo": "Extra para cubrir necesidades especiales",
+      "tiene_precio": true,
+      "agregado": "2026-04-29T16:38:05"
+    },
+    {
+      "id": "91cb4127",
+      "hospital": "ALMACÉN EHMO",
+      "alimento": "Mermelada de fresa individual 20g caja con 250 piezas",
+      "presentacion": "CAJA",
+      "cantidad": 7.0,
+      "precio_unitario": 800.0,
+      "importe": 5600.0,
+      "motivo": "Extra para cubrir necesidades especiales",
+      "tiene_precio": true,
+      "agregado": "2026-04-29T16:38:05"
+    },
+    {
+      "id": "1b2542d7",
+      "hospital": "ALMACÉN EHMO",
+      "alimento": "Nieve de sabores",
+      "presentacion": "PZ",
+      "cantidad": 1.0,
+      "precio_unitario": 91.0,
+      "importe": 91.0,
+      "motivo": "Extra para cubrir necesidades especiales",
+      "tiene_precio": true,
+      "agregado": "2026-04-29T16:38:05"
+    }
+  ],
+  "folios_por_destino": {
+    "ALMACÉN EHMO": "0000000013"
+  }
+}

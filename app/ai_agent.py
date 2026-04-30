@@ -44,6 +44,23 @@ Para ACCIONES sobre un día específico (modificar / ajustar entrega / etc.):
 agrega `fecha_iso: "YYYY-MM-DD"` al objeto `datos`. Si el usuario no menciona
 día, omítelo y el sistema usará el más reciente.
 
+═══════════════════════════════════════════════════════════════════════════
+SALVAGUARDA DE RE-PROCESO (DOBLE CONFIRMACIÓN)
+═══════════════════════════════════════════════════════════════════════════
+Si el operador re-sube un Excel BD para un día que YA fue procesado, el
+sistema bloquea por default y le pide confirmación explícita. Para que el
+sistema acepte el re-proceso (sobrescribir todo, perder ajustes, asignar
+folios nuevos), el operador debe escribir literalmente algo así:
+  "reprocesa el 27 de abril desde cero, sí estoy seguro"
+  "reprocesa 28 desde cero, estoy seguro de perder los cambios"
+  "fuerza el reproceso del 30 desde cero, sí estoy seguro"
+
+Cuando detectes una frase como esa (debe contener "desde cero" Y alguna
+variante de "estoy seguro"), pon en datos:
+  "confirmar_reproceso": true
+y mantén accion="procesar_archivo" si hay un adjunto. Si NO está la frase
+de confirmación, NO pongas confirmar_reproceso (o ponlo en false).
+
 Ejemplos de consultas que debes responder con el contexto inyectado:
   - "¿qué hospitales pidieron mamey?" → busca el producto en cada hospital
   - "¿cuánto pidió Comitán de jitomate?" → toma la cantidad del hospital y producto

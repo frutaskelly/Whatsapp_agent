@@ -1,0 +1,2687 @@
+{
+  "fecha": "2026-04-28",
+  "fecha_legible": "28 de abril",
+  "creado": "2026-04-27T14:12:38",
+  "ultima_modificacion": "2026-04-29T19:03:25",
+  "hospitales": {
+    "Hospital Básico Comunitario 12 Camas Berriozabal": {
+      "folio_remision": "0000000026",
+      "estado": "modificado",
+      "estado_actualizado": "2026-04-28T02:39:29",
+      "productos": [
+        {
+          "alimento": "Canela en raja plástico-sellada o envasada en frasco de vidrio (1000 g)",
+          "presentacion": "KILO",
+          "cantidad": 0.25,
+          "cantidad_original": 0.25,
+          "precio_unitario": 494.5,
+          "importe": 123.62,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Jitomate guaje o guajiro",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 93.5,
+          "importe": 187.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Mango atufo",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 149.5,
+          "importe": 299.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Melón chino",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 36.5,
+          "importe": 36.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Naranja",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 25.5,
+          "importe": 51.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Papaya roja",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 43.5,
+          "importe": 43.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Piña miel",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 32.5,
+          "importe": 32.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Plátano tabasco pza. 200 gr. Aprox. Punta verde",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 45.0,
+          "importe": 90.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Sandia",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 20.5,
+          "importe": 20.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Chile seco mulato",
+          "presentacion": "KG",
+          "cantidad": 1.0,
+          "cantidad_original": 0,
+          "precio_unitario": 265.5,
+          "importe": 265.5,
+          "tiene_precio": true,
+          "agregado_por_modificacion": true
+        }
+      ],
+      "subtotal": 1149.12,
+      "total": 1149.12
+    },
+    "Hospital Básico Comunitario Dr. Rafael Alfaro Gónzalez Pijijiapan": {
+      "folio_remision": "0000000027",
+      "estado": "vigente",
+      "estado_actualizado": "2026-04-27T14:12:38",
+      "productos": [
+        {
+          "alimento": "Acelga",
+          "presentacion": "KILO",
+          "cantidad": 0.5,
+          "cantidad_original": 0.5,
+          "precio_unitario": 24.5,
+          "importe": 12.25,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Aguacate hass",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 57.5,
+          "importe": 57.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Brócoli",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 24.5,
+          "importe": 24.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Calabacita italiana",
+          "presentacion": "KILO",
+          "cantidad": 5.0,
+          "cantidad_original": 5.0,
+          "precio_unitario": 24.5,
+          "importe": 122.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Calabaza de castilla",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 43.5,
+          "importe": 43.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Cebolla blanca grande",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 15.5,
+          "importe": 31.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Champiñón fresco",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 143.5,
+          "importe": 143.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Chayote sin espinas",
+          "presentacion": "KILO",
+          "cantidad": 8.0,
+          "cantidad_original": 8.0,
+          "precio_unitario": 27.5,
+          "importe": 220.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Chile poblano",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 117.5,
+          "importe": 117.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Chile serrano",
+          "presentacion": "KILO",
+          "cantidad": 0.25,
+          "cantidad_original": 0.25,
+          "precio_unitario": 57.5,
+          "importe": 14.38,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Cilantro",
+          "presentacion": "KILO",
+          "cantidad": 0.5,
+          "cantidad_original": 0.5,
+          "precio_unitario": 39.5,
+          "importe": 19.75,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Col blanca",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 39.5,
+          "importe": 39.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Coliflor fresca",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 35.5,
+          "importe": 35.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Ejote",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 44.5,
+          "importe": 44.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Elote fresco entero",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 58.5,
+          "importe": 117.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Espinaca fresca",
+          "presentacion": "KILO",
+          "cantidad": 0.5,
+          "cantidad_original": 0.5,
+          "precio_unitario": 39.5,
+          "importe": 19.75,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Jitomate guaje o guajiro",
+          "presentacion": "KILO",
+          "cantidad": 8.0,
+          "cantidad_original": 8.0,
+          "precio_unitario": 93.5,
+          "importe": 748.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Jícama",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 17.0,
+          "importe": 17.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Lechuga romana",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 32.0,
+          "importe": 32.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Manzana",
+          "presentacion": "KILO",
+          "cantidad": 4.0,
+          "cantidad_original": 4.0,
+          "precio_unitario": 76.5,
+          "importe": 306.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Melón chino",
+          "presentacion": "KILO",
+          "cantidad": 4.0,
+          "cantidad_original": 4.0,
+          "precio_unitario": 36.5,
+          "importe": 146.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Naranja",
+          "presentacion": "KILO",
+          "cantidad": 5.0,
+          "cantidad_original": 5.0,
+          "precio_unitario": 25.5,
+          "importe": 127.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Nopal",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 29.5,
+          "importe": 29.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Papa blanca grande",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 36.5,
+          "importe": 36.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Papaya roja",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 43.5,
+          "importe": 87.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Pepino grande",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 54.5,
+          "importe": 109.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Pera mantequilla",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 82.5,
+          "importe": 165.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Pimiento morrón fresco",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 119.5,
+          "importe": 119.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Piña miel",
+          "presentacion": "KILO",
+          "cantidad": 3.0,
+          "cantidad_original": 3.0,
+          "precio_unitario": 32.5,
+          "importe": 97.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Plátano macho",
+          "presentacion": "KILO",
+          "cantidad": 3.0,
+          "cantidad_original": 3.0,
+          "precio_unitario": 37.5,
+          "importe": 112.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Rábano chico",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 30.5,
+          "importe": 30.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Sandia",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 20.5,
+          "importe": 41.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Tomate verde grande y limpio",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 61.5,
+          "importe": 61.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Uva sin semilla",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 127.5,
+          "importe": 127.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Zanahoria grande",
+          "presentacion": "KILO",
+          "cantidad": 6.0,
+          "cantidad_original": 6.0,
+          "precio_unitario": 16.5,
+          "importe": 99.0,
+          "tiene_precio": true
+        }
+      ],
+      "subtotal": 3555.12,
+      "total": 3555.12
+    },
+    "Hospital Básico Comunitario de Cintalapa de Figueroa": {
+      "folio_remision": "0000000028",
+      "estado": "vigente",
+      "estado_actualizado": "2026-04-27T14:12:38",
+      "productos": [
+        {
+          "alimento": "Aguacate hass",
+          "presentacion": "KILO",
+          "cantidad": 4.0,
+          "cantidad_original": 4.0,
+          "precio_unitario": 57.5,
+          "importe": 230.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Betabel",
+          "presentacion": "KILO",
+          "cantidad": 0.5,
+          "cantidad_original": 0.5,
+          "precio_unitario": 28.5,
+          "importe": 14.25,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Brócoli",
+          "presentacion": "KILO",
+          "cantidad": 0.5,
+          "cantidad_original": 0.5,
+          "precio_unitario": 24.5,
+          "importe": 12.25,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Calabacita italiana",
+          "presentacion": "KILO",
+          "cantidad": 4.0,
+          "cantidad_original": 4.0,
+          "precio_unitario": 24.5,
+          "importe": 98.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Cebolla blanca grande",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 15.5,
+          "importe": 31.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Champiñón fresco",
+          "presentacion": "KILO",
+          "cantidad": 0.5,
+          "cantidad_original": 0.5,
+          "precio_unitario": 143.5,
+          "importe": 71.75,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Chayote sin espinas",
+          "presentacion": "KILO",
+          "cantidad": 3.0,
+          "cantidad_original": 3.0,
+          "precio_unitario": 27.5,
+          "importe": 82.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Chile seco guajillo",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 138.5,
+          "importe": 138.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Cilantro",
+          "presentacion": "KILO",
+          "cantidad": 0.5,
+          "cantidad_original": 0.5,
+          "precio_unitario": 39.5,
+          "importe": 19.75,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Ciruela roja",
+          "presentacion": "KILO",
+          "cantidad": 4.0,
+          "cantidad_original": 4.0,
+          "precio_unitario": 164.5,
+          "importe": 658.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Coliflor fresca",
+          "presentacion": "KILO",
+          "cantidad": 0.5,
+          "cantidad_original": 0.5,
+          "precio_unitario": 35.5,
+          "importe": 17.75,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Durazno (melocotón)",
+          "presentacion": "KILO",
+          "cantidad": 5.0,
+          "cantidad_original": 5.0,
+          "precio_unitario": 149.5,
+          "importe": 747.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Ejote",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 44.5,
+          "importe": 89.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Elote procesado congelado desgranado",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 224.5,
+          "importe": 449.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Guayaba",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 42.5,
+          "importe": 85.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Jitomate guaje o guajiro",
+          "presentacion": "KILO",
+          "cantidad": 9.0,
+          "cantidad_original": 9.0,
+          "precio_unitario": 93.5,
+          "importe": 841.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Jícama",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 17.0,
+          "importe": 17.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Lechuga romana",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 32.0,
+          "importe": 32.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Mandarina",
+          "presentacion": "KILO",
+          "cantidad": 3.0,
+          "cantidad_original": 3.0,
+          "precio_unitario": 48.5,
+          "importe": 145.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Manzana",
+          "presentacion": "KILO",
+          "cantidad": 30.0,
+          "cantidad_original": 30.0,
+          "precio_unitario": 76.5,
+          "importe": 2295.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Naranja",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 25.5,
+          "importe": 51.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Nopal",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 29.5,
+          "importe": 29.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Palanqueta de cacahuate bolsa individual de celofán (30 g)",
+          "presentacion": "PAQUETE",
+          "cantidad": 100.0,
+          "cantidad_original": 100.0,
+          "precio_unitario": 50.0,
+          "importe": 5000.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Papa blanca grande",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 36.5,
+          "importe": 73.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Papaya roja",
+          "presentacion": "KILO",
+          "cantidad": 6.0,
+          "cantidad_original": 6.0,
+          "precio_unitario": 43.5,
+          "importe": 261.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Pepino grande",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 54.5,
+          "importe": 54.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Pera mantequilla",
+          "presentacion": "KILO",
+          "cantidad": 4.0,
+          "cantidad_original": 4.0,
+          "precio_unitario": 82.5,
+          "importe": 330.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Pimiento morrón fresco",
+          "presentacion": "KILO",
+          "cantidad": 1.5,
+          "cantidad_original": 1.5,
+          "precio_unitario": 119.5,
+          "importe": 179.25,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Piña miel",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 32.5,
+          "importe": 65.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Plátano tabasco pza. 200 gr. Aprox. Punta verde",
+          "presentacion": "KILO",
+          "cantidad": 3.0,
+          "cantidad_original": 3.0,
+          "precio_unitario": 45.0,
+          "importe": 135.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Uva sin semilla",
+          "presentacion": "KILO",
+          "cantidad": 8.0,
+          "cantidad_original": 8.0,
+          "precio_unitario": 127.5,
+          "importe": 1020.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Zanahoria grande",
+          "presentacion": "KILO",
+          "cantidad": 6.0,
+          "cantidad_original": 6.0,
+          "precio_unitario": 16.5,
+          "importe": 99.0,
+          "tiene_precio": true
+        }
+      ],
+      "subtotal": 13372.5,
+      "total": 13372.5
+    },
+    "Hospital Básico Comunitario de Frontera Comalapa": {
+      "folio_remision": "0000000029",
+      "estado": "vigente",
+      "estado_actualizado": "2026-04-27T14:12:38",
+      "productos": [
+        {
+          "alimento": "Apio",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 17.0,
+          "importe": 17.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Cebolla blanca grande",
+          "presentacion": "KILO",
+          "cantidad": 6.0,
+          "cantidad_original": 6.0,
+          "precio_unitario": 15.5,
+          "importe": 93.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Chayote sin espinas",
+          "presentacion": "KILO",
+          "cantidad": 9.0,
+          "cantidad_original": 9.0,
+          "precio_unitario": 27.5,
+          "importe": 247.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Chile jalapeño",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 71.5,
+          "importe": 71.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Chile seco ancho",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 187.5,
+          "importe": 187.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Chile seco guajillo",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 138.5,
+          "importe": 138.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Chile seco pasilla",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 285.5,
+          "importe": 285.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Cilantro",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 39.5,
+          "importe": 39.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Coliflor fresca",
+          "presentacion": "KILO",
+          "cantidad": 5.0,
+          "cantidad_original": 5.0,
+          "precio_unitario": 35.5,
+          "importe": 177.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Durazno (melocotón)",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 149.5,
+          "importe": 299.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Espinaca fresca",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 39.5,
+          "importe": 39.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Flor de Jamaica (1000 g)",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 149.5,
+          "importe": 299.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Guayaba",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 42.5,
+          "importe": 85.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Jitomate guaje o guajiro",
+          "presentacion": "KILO",
+          "cantidad": 10.0,
+          "cantidad_original": 10.0,
+          "precio_unitario": 93.5,
+          "importe": 935.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Limón con semilla del no. 5",
+          "presentacion": "KILO",
+          "cantidad": 4.0,
+          "cantidad_original": 4.0,
+          "precio_unitario": 46.5,
+          "importe": 186.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Manzana",
+          "presentacion": "KILO",
+          "cantidad": 8.0,
+          "cantidad_original": 8.0,
+          "precio_unitario": 76.5,
+          "importe": 612.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Naranja",
+          "presentacion": "KILO",
+          "cantidad": 4.0,
+          "cantidad_original": 4.0,
+          "precio_unitario": 25.5,
+          "importe": 102.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Papa amarilla",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 40.5,
+          "importe": 81.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Papaya roja",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 43.5,
+          "importe": 87.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Pepino grande",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 54.5,
+          "importe": 109.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Pera mantequilla",
+          "presentacion": "KILO",
+          "cantidad": 8.0,
+          "cantidad_original": 8.0,
+          "precio_unitario": 82.5,
+          "importe": 660.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Pimiento morrón fresco",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 119.5,
+          "importe": 239.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Piña miel",
+          "presentacion": "KILO",
+          "cantidad": 4.0,
+          "cantidad_original": 4.0,
+          "precio_unitario": 32.5,
+          "importe": 130.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Plátano macho",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 37.5,
+          "importe": 75.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Plátano tabasco pza. 200 gr. Aprox. Punta verde",
+          "presentacion": "KILO",
+          "cantidad": 8.0,
+          "cantidad_original": 8.0,
+          "precio_unitario": 45.0,
+          "importe": 360.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Rábano chico",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 30.5,
+          "importe": 30.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Zanahoria grande",
+          "presentacion": "KILO",
+          "cantidad": 7.0,
+          "cantidad_original": 7.0,
+          "precio_unitario": 16.5,
+          "importe": 115.5,
+          "tiene_precio": true
+        }
+      ],
+      "subtotal": 5702.0,
+      "total": 5702.0
+    },
+    "Hospital Chiapas nos une Dr. Jesús Gilberto Gomez Maza": {
+      "folio_remision": "0000000030",
+      "estado": "vigente",
+      "estado_actualizado": "2026-04-27T14:12:38",
+      "productos": [
+        {
+          "alimento": "Champiñón fresco",
+          "presentacion": "KILO",
+          "cantidad": 7.0,
+          "cantidad_original": 7.0,
+          "precio_unitario": 143.5,
+          "importe": 1004.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Flor de Jamaica (1000 g)",
+          "presentacion": "KILO",
+          "cantidad": 3.0,
+          "cantidad_original": 3.0,
+          "precio_unitario": 149.5,
+          "importe": 448.5,
+          "tiene_precio": true
+        }
+      ],
+      "subtotal": 1453.0,
+      "total": 1453.0
+    },
+    "Hospital General Bicentenario Villaflores": {
+      "folio_remision": "0000000031",
+      "estado": "vigente",
+      "estado_actualizado": "2026-04-27T14:12:38",
+      "productos": [
+        {
+          "alimento": "Acelga",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 24.5,
+          "importe": 49.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Apio",
+          "presentacion": "KILO",
+          "cantidad": 3.5,
+          "cantidad_original": 3.5,
+          "precio_unitario": 17.0,
+          "importe": 59.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Brócoli",
+          "presentacion": "KILO",
+          "cantidad": 5.0,
+          "cantidad_original": 5.0,
+          "precio_unitario": 24.5,
+          "importe": 122.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Calabacita italiana",
+          "presentacion": "KILO",
+          "cantidad": 15.0,
+          "cantidad_original": 15.0,
+          "precio_unitario": 24.5,
+          "importe": 367.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Cebolla blanca grande",
+          "presentacion": "KILO",
+          "cantidad": 10.0,
+          "cantidad_original": 10.0,
+          "precio_unitario": 15.5,
+          "importe": 155.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Cebolla morada",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 17.5,
+          "importe": 35.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Chayote sin espinas",
+          "presentacion": "KILO",
+          "cantidad": 55.0,
+          "cantidad_original": 55.0,
+          "precio_unitario": 27.5,
+          "importe": 1512.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Cilantro",
+          "presentacion": "KILO",
+          "cantidad": 0.5,
+          "cantidad_original": 0.5,
+          "precio_unitario": 39.5,
+          "importe": 19.75,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Ciruela roja",
+          "presentacion": "KILO",
+          "cantidad": 5.0,
+          "cantidad_original": 5.0,
+          "precio_unitario": 164.5,
+          "importe": 822.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Coliflor fresca",
+          "presentacion": "KILO",
+          "cantidad": 8.0,
+          "cantidad_original": 8.0,
+          "precio_unitario": 35.5,
+          "importe": 284.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Durazno (melocotón)",
+          "presentacion": "KILO",
+          "cantidad": 6.0,
+          "cantidad_original": 6.0,
+          "precio_unitario": 149.5,
+          "importe": 897.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Ejote",
+          "presentacion": "KILO",
+          "cantidad": 4.0,
+          "cantidad_original": 4.0,
+          "precio_unitario": 44.5,
+          "importe": 178.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Espinaca fresca",
+          "presentacion": "KILO",
+          "cantidad": 1.5,
+          "cantidad_original": 1.5,
+          "precio_unitario": 39.5,
+          "importe": 59.25,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Flor de calabaza",
+          "presentacion": "KILO",
+          "cantidad": 2.5,
+          "cantidad_original": 2.5,
+          "precio_unitario": 154.5,
+          "importe": 386.25,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Guayaba",
+          "presentacion": "KILO",
+          "cantidad": 7.0,
+          "cantidad_original": 7.0,
+          "precio_unitario": 42.5,
+          "importe": 297.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Jitomate guaje o guajiro",
+          "presentacion": "KILO",
+          "cantidad": 35.0,
+          "cantidad_original": 35.0,
+          "precio_unitario": 93.5,
+          "importe": 3272.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Jícama",
+          "presentacion": "KILO",
+          "cantidad": 5.0,
+          "cantidad_original": 5.0,
+          "precio_unitario": 17.0,
+          "importe": 85.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Limón con semilla del no. 5",
+          "presentacion": "KILO",
+          "cantidad": 1.5,
+          "cantidad_original": 1.5,
+          "precio_unitario": 46.5,
+          "importe": 69.75,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Manzana",
+          "presentacion": "KILO",
+          "cantidad": 30.0,
+          "cantidad_original": 30.0,
+          "precio_unitario": 76.5,
+          "importe": 2295.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Melón chino",
+          "presentacion": "KILO",
+          "cantidad": 20.0,
+          "cantidad_original": 20.0,
+          "precio_unitario": 36.5,
+          "importe": 730.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Mermelada de fresa individual (20 g) caja 250 piezas",
+          "presentacion": "CAJA",
+          "cantidad": 6.0,
+          "cantidad_original": 6.0,
+          "precio_unitario": 800.0,
+          "importe": 4800.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Naranja",
+          "presentacion": "KILO",
+          "cantidad": 10.0,
+          "cantidad_original": 10.0,
+          "precio_unitario": 25.5,
+          "importe": 255.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Nopal",
+          "presentacion": "KILO",
+          "cantidad": 4.0,
+          "cantidad_original": 4.0,
+          "precio_unitario": 29.5,
+          "importe": 118.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Palanqueta de cacahuate bolsa individual de celofán (30 g)",
+          "presentacion": "PAQUETE",
+          "cantidad": 80.0,
+          "cantidad_original": 80.0,
+          "precio_unitario": 50.0,
+          "importe": 4000.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Papa blanca grande",
+          "presentacion": "KILO",
+          "cantidad": 15.0,
+          "cantidad_original": 15.0,
+          "precio_unitario": 36.5,
+          "importe": 547.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Papaya roja",
+          "presentacion": "KILO",
+          "cantidad": 10.0,
+          "cantidad_original": 10.0,
+          "precio_unitario": 43.5,
+          "importe": 435.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Pepino grande",
+          "presentacion": "KILO",
+          "cantidad": 5.0,
+          "cantidad_original": 5.0,
+          "precio_unitario": 54.5,
+          "importe": 272.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Pera mantequilla",
+          "presentacion": "KILO",
+          "cantidad": 30.0,
+          "cantidad_original": 30.0,
+          "precio_unitario": 82.5,
+          "importe": 2475.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Piña miel",
+          "presentacion": "KILO",
+          "cantidad": 15.0,
+          "cantidad_original": 15.0,
+          "precio_unitario": 32.5,
+          "importe": 487.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Plátano macho",
+          "presentacion": "KILO",
+          "cantidad": 5.0,
+          "cantidad_original": 5.0,
+          "precio_unitario": 37.5,
+          "importe": 187.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Plátano tabasco pza. 200 gr. Aprox. Punta verde",
+          "presentacion": "KILO",
+          "cantidad": 5.0,
+          "cantidad_original": 5.0,
+          "precio_unitario": 45.0,
+          "importe": 225.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Polvo para hornear  (454 g)",
+          "presentacion": "PZ",
+          "cantidad": 6.0,
+          "cantidad_original": 6.0,
+          "precio_unitario": 60.0,
+          "importe": 360.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Sandia",
+          "presentacion": "KILO",
+          "cantidad": 4.0,
+          "cantidad_original": 4.0,
+          "precio_unitario": 20.5,
+          "importe": 82.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Tomate verde grande y limpio",
+          "presentacion": "KILO",
+          "cantidad": 4.0,
+          "cantidad_original": 4.0,
+          "precio_unitario": 61.5,
+          "importe": 246.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Uva sin semilla",
+          "presentacion": "KILO",
+          "cantidad": 6.0,
+          "cantidad_original": 6.0,
+          "precio_unitario": 127.5,
+          "importe": 765.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Zanahoria grande",
+          "presentacion": "KILO",
+          "cantidad": 35.0,
+          "cantidad_original": 35.0,
+          "precio_unitario": 16.5,
+          "importe": 577.5,
+          "tiene_precio": true
+        }
+      ],
+      "subtotal": 27531.0,
+      "total": 27531.0
+    },
+    "Hospital General Dr. Juan C Corzo Tonalá": {
+      "folio_remision": "0000000032",
+      "estado": "vigente",
+      "estado_actualizado": "2026-04-27T14:12:38",
+      "productos": [
+        {
+          "alimento": "Acelga",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 24.5,
+          "importe": 49.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Aguacate hass",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 57.5,
+          "importe": 57.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Ajo en bulbo grande (1000 g)",
+          "presentacion": "KILO",
+          "cantidad": 0.5,
+          "cantidad_original": 0.5,
+          "precio_unitario": 77.5,
+          "importe": 38.75,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Apio",
+          "presentacion": "KILO",
+          "cantidad": 0.5,
+          "cantidad_original": 0.5,
+          "precio_unitario": 17.0,
+          "importe": 8.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Calabacita italiana",
+          "presentacion": "KILO",
+          "cantidad": 5.0,
+          "cantidad_original": 5.0,
+          "precio_unitario": 24.5,
+          "importe": 122.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Cebolla blanca grande",
+          "presentacion": "KILO",
+          "cantidad": 7.0,
+          "cantidad_original": 7.0,
+          "precio_unitario": 15.5,
+          "importe": 108.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Chayote sin espinas",
+          "presentacion": "KILO",
+          "cantidad": 15.0,
+          "cantidad_original": 15.0,
+          "precio_unitario": 27.5,
+          "importe": 412.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Chile seco pasilla",
+          "presentacion": "KILO",
+          "cantidad": 0.5,
+          "cantidad_original": 0.5,
+          "precio_unitario": 285.5,
+          "importe": 142.75,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Chile serrano",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 57.5,
+          "importe": 57.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Cilantro",
+          "presentacion": "KILO",
+          "cantidad": 0.5,
+          "cantidad_original": 0.5,
+          "precio_unitario": 39.5,
+          "importe": 19.75,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Durazno (melocotón)",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 149.5,
+          "importe": 299.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Ejote",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 44.5,
+          "importe": 44.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Flor de Jamaica (1000 g)",
+          "presentacion": "KILO",
+          "cantidad": 1.5,
+          "cantidad_original": 1.5,
+          "precio_unitario": 149.5,
+          "importe": 224.25,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Jitomate guaje o guajiro",
+          "presentacion": "KILO",
+          "cantidad": 15.0,
+          "cantidad_original": 15.0,
+          "precio_unitario": 93.5,
+          "importe": 1402.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Jícama",
+          "presentacion": "KILO",
+          "cantidad": 3.0,
+          "cantidad_original": 3.0,
+          "precio_unitario": 17.0,
+          "importe": 51.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Lechuga romana",
+          "presentacion": "KILO",
+          "cantidad": 3.0,
+          "cantidad_original": 3.0,
+          "precio_unitario": 32.0,
+          "importe": 96.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Limón con semilla del no. 5",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 46.5,
+          "importe": 93.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Manzana",
+          "presentacion": "KILO",
+          "cantidad": 15.0,
+          "cantidad_original": 15.0,
+          "precio_unitario": 76.5,
+          "importe": 1147.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Melón chino",
+          "presentacion": "KILO",
+          "cantidad": 10.0,
+          "cantidad_original": 10.0,
+          "precio_unitario": 36.5,
+          "importe": 365.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Naranja",
+          "presentacion": "KILO",
+          "cantidad": 15.0,
+          "cantidad_original": 15.0,
+          "precio_unitario": 25.5,
+          "importe": 382.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Nuez sin cascara  (1000g)",
+          "presentacion": "KILO",
+          "cantidad": 0.5,
+          "cantidad_original": 0.5,
+          "precio_unitario": 364.5,
+          "importe": 182.25,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Papa blanca grande",
+          "presentacion": "KILO",
+          "cantidad": 10.0,
+          "cantidad_original": 10.0,
+          "precio_unitario": 36.5,
+          "importe": 365.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Papaya roja",
+          "presentacion": "KILO",
+          "cantidad": 10.0,
+          "cantidad_original": 10.0,
+          "precio_unitario": 43.5,
+          "importe": 435.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Pepino grande",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 54.5,
+          "importe": 109.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Pimiento morrón fresco",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 119.5,
+          "importe": 239.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Piña miel",
+          "presentacion": "KILO",
+          "cantidad": 10.0,
+          "cantidad_original": 10.0,
+          "precio_unitario": 32.5,
+          "importe": 325.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Plátano macho",
+          "presentacion": "KILO",
+          "cantidad": 8.0,
+          "cantidad_original": 8.0,
+          "precio_unitario": 37.5,
+          "importe": 300.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Plátano tabasco pza. 200 gr. Aprox. Punta verde",
+          "presentacion": "KILO",
+          "cantidad": 15.0,
+          "cantidad_original": 15.0,
+          "precio_unitario": 45.0,
+          "importe": 675.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Rábano chico",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 30.5,
+          "importe": 61.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Sandia",
+          "presentacion": "KILO",
+          "cantidad": 8.0,
+          "cantidad_original": 8.0,
+          "precio_unitario": 20.5,
+          "importe": 164.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Tamarindo (1000 g)",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 134.5,
+          "importe": 134.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Tomate verde grande y limpio",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 61.5,
+          "importe": 61.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Uva sin semilla",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 127.5,
+          "importe": 127.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Zanahoria grande",
+          "presentacion": "KILO",
+          "cantidad": 6.0,
+          "cantidad_original": 6.0,
+          "precio_unitario": 16.5,
+          "importe": 99.0,
+          "tiene_precio": true
+        }
+      ],
+      "subtotal": 8400.25,
+      "total": 8400.25
+    },
+    "Hospital General Juárez Arriaga": {
+      "folio_remision": "0000000033",
+      "estado": "vigente",
+      "estado_actualizado": "2026-04-27T14:12:38",
+      "productos": [
+        {
+          "alimento": "Acelga",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 24.5,
+          "importe": 49.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Aguacate hass",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 57.5,
+          "importe": 115.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Ajo en bulbo grande (1000 g)",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 77.5,
+          "importe": 77.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Brócoli",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 24.5,
+          "importe": 24.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Calabacita italiana",
+          "presentacion": "KILO",
+          "cantidad": 3.0,
+          "cantidad_original": 3.0,
+          "precio_unitario": 24.5,
+          "importe": 73.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Calabaza de castilla",
+          "presentacion": "KILO",
+          "cantidad": 3.0,
+          "cantidad_original": 3.0,
+          "precio_unitario": 43.5,
+          "importe": 130.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Cebolla blanca grande",
+          "presentacion": "KILO",
+          "cantidad": 5.0,
+          "cantidad_original": 5.0,
+          "precio_unitario": 15.5,
+          "importe": 77.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Champiñón fresco",
+          "presentacion": "KILO",
+          "cantidad": 4.0,
+          "cantidad_original": 4.0,
+          "precio_unitario": 143.5,
+          "importe": 574.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Chayote sin espinas",
+          "presentacion": "KILO",
+          "cantidad": 5.0,
+          "cantidad_original": 5.0,
+          "precio_unitario": 27.5,
+          "importe": 137.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Chile jalapeño",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 71.5,
+          "importe": 71.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Cilantro",
+          "presentacion": "KILO",
+          "cantidad": 0.5,
+          "cantidad_original": 0.5,
+          "precio_unitario": 39.5,
+          "importe": 19.75,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Flor de Jamaica (1000 g)",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 149.5,
+          "importe": 149.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Jitomate guaje o guajiro",
+          "presentacion": "KILO",
+          "cantidad": 10.0,
+          "cantidad_original": 10.0,
+          "precio_unitario": 93.5,
+          "importe": 935.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Lechuga romana",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 32.0,
+          "importe": 32.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Limón con semilla del no. 5",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 46.5,
+          "importe": 93.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Mandarina",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 48.5,
+          "importe": 97.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Manzana",
+          "presentacion": "KILO",
+          "cantidad": 3.0,
+          "cantidad_original": 3.0,
+          "precio_unitario": 76.5,
+          "importe": 229.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Melón chino",
+          "presentacion": "KILO",
+          "cantidad": 10.0,
+          "cantidad_original": 10.0,
+          "precio_unitario": 36.5,
+          "importe": 365.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Papa blanca grande",
+          "presentacion": "KILO",
+          "cantidad": 5.0,
+          "cantidad_original": 5.0,
+          "precio_unitario": 36.5,
+          "importe": 182.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Papaya roja",
+          "presentacion": "KILO",
+          "cantidad": 3.0,
+          "cantidad_original": 3.0,
+          "precio_unitario": 43.5,
+          "importe": 130.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Pera mantequilla",
+          "presentacion": "KILO",
+          "cantidad": 3.0,
+          "cantidad_original": 3.0,
+          "precio_unitario": 82.5,
+          "importe": 247.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Piña miel",
+          "presentacion": "KILO",
+          "cantidad": 8.0,
+          "cantidad_original": 8.0,
+          "precio_unitario": 32.5,
+          "importe": 260.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Plátano macho",
+          "presentacion": "KILO",
+          "cantidad": 3.0,
+          "cantidad_original": 3.0,
+          "precio_unitario": 37.5,
+          "importe": 112.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Plátano tabasco pza. 200 gr. Aprox. Punta verde",
+          "presentacion": "KILO",
+          "cantidad": 5.0,
+          "cantidad_original": 5.0,
+          "precio_unitario": 45.0,
+          "importe": 225.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Tomate verde grande y limpio",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 61.5,
+          "importe": 61.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Uva sin semilla",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 127.5,
+          "importe": 127.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Zanahoria grande",
+          "presentacion": "KILO",
+          "cantidad": 6.0,
+          "cantidad_original": 6.0,
+          "precio_unitario": 16.5,
+          "importe": 99.0,
+          "tiene_precio": true
+        }
+      ],
+      "subtotal": 4697.25,
+      "total": 4697.25
+    },
+    "Hospital General Tapachula": {
+      "folio_remision": "0000000034",
+      "estado": "vigente",
+      "estado_actualizado": "2026-04-27T14:12:38",
+      "productos": [
+        {
+          "alimento": "Aguacate hass",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 57.5,
+          "importe": 115.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Ajo en bulbo grande (1000 g)",
+          "presentacion": "KILO",
+          "cantidad": 6.0,
+          "cantidad_original": 6.0,
+          "precio_unitario": 77.5,
+          "importe": 465.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Apio",
+          "presentacion": "KILO",
+          "cantidad": 1.5,
+          "cantidad_original": 1.5,
+          "precio_unitario": 17.0,
+          "importe": 25.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Brócoli",
+          "presentacion": "KILO",
+          "cantidad": 3.0,
+          "cantidad_original": 3.0,
+          "precio_unitario": 24.5,
+          "importe": 73.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Calabacita italiana",
+          "presentacion": "KILO",
+          "cantidad": 37.0,
+          "cantidad_original": 37.0,
+          "precio_unitario": 24.5,
+          "importe": 906.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Canela en raja plástico-sellada o envasada en frasco de vidrio (1000 g)",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 494.5,
+          "importe": 494.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Cebolla blanca grande",
+          "presentacion": "KILO",
+          "cantidad": 37.0,
+          "cantidad_original": 37.0,
+          "precio_unitario": 15.5,
+          "importe": 573.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Chayote sin espinas",
+          "presentacion": "KILO",
+          "cantidad": 138.0,
+          "cantidad_original": 138.0,
+          "precio_unitario": 27.5,
+          "importe": 3795.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Chile jalapeño",
+          "presentacion": "KILO",
+          "cantidad": 5.0,
+          "cantidad_original": 5.0,
+          "precio_unitario": 71.5,
+          "importe": 357.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Chile poblano",
+          "presentacion": "KILO",
+          "cantidad": 14.0,
+          "cantidad_original": 14.0,
+          "precio_unitario": 117.5,
+          "importe": 1645.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Cilantro",
+          "presentacion": "KILO",
+          "cantidad": 1.5,
+          "cantidad_original": 1.5,
+          "precio_unitario": 39.5,
+          "importe": 59.25,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Ciruela roja",
+          "presentacion": "KILO",
+          "cantidad": 3.0,
+          "cantidad_original": 3.0,
+          "precio_unitario": 164.5,
+          "importe": 493.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Col blanca",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 39.5,
+          "importe": 79.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Coliflor fresca",
+          "presentacion": "KILO",
+          "cantidad": 18.0,
+          "cantidad_original": 18.0,
+          "precio_unitario": 35.5,
+          "importe": 639.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Elote fresco entero",
+          "presentacion": "KILO",
+          "cantidad": 7.0,
+          "cantidad_original": 7.0,
+          "precio_unitario": 58.5,
+          "importe": 409.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Epazote (1000 g)",
+          "presentacion": "KILO",
+          "cantidad": 0.25,
+          "cantidad_original": 0.25,
+          "precio_unitario": 32.5,
+          "importe": 8.12,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Flor de Jamaica (1000 g)",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 149.5,
+          "importe": 299.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Germinado de soya",
+          "presentacion": "KILO",
+          "cantidad": 3.5,
+          "cantidad_original": 3.5,
+          "precio_unitario": 80.0,
+          "importe": 280.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Jengibre en raíz entera (1000 g)",
+          "presentacion": "KILO",
+          "cantidad": 0.25,
+          "cantidad_original": 0.25,
+          "precio_unitario": 494.5,
+          "importe": 123.62,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Jitomate guaje o guajiro",
+          "presentacion": "KILO",
+          "cantidad": 130.0,
+          "cantidad_original": 130.0,
+          "precio_unitario": 93.5,
+          "importe": 12155.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Lechuga romana",
+          "presentacion": "KILO",
+          "cantidad": 7.0,
+          "cantidad_original": 7.0,
+          "precio_unitario": 32.0,
+          "importe": 224.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Manzana",
+          "presentacion": "KILO",
+          "cantidad": 28.0,
+          "cantidad_original": 28.0,
+          "precio_unitario": 76.5,
+          "importe": 2142.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Melón chino",
+          "presentacion": "KILO",
+          "cantidad": 43.0,
+          "cantidad_original": 43.0,
+          "precio_unitario": 36.5,
+          "importe": 1569.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Papa blanca grande",
+          "presentacion": "KILO",
+          "cantidad": 59.0,
+          "cantidad_original": 59.0,
+          "precio_unitario": 36.5,
+          "importe": 2153.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Papaya roja",
+          "presentacion": "KILO",
+          "cantidad": 63.0,
+          "cantidad_original": 63.0,
+          "precio_unitario": 43.5,
+          "importe": 2740.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Pera mantequilla",
+          "presentacion": "KILO",
+          "cantidad": 45.0,
+          "cantidad_original": 45.0,
+          "precio_unitario": 82.5,
+          "importe": 3712.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Piña miel",
+          "presentacion": "KILO",
+          "cantidad": 115.0,
+          "cantidad_original": 115.0,
+          "precio_unitario": 32.5,
+          "importe": 3737.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Plátano tabasco pza. 200 gr. Aprox. Punta verde",
+          "presentacion": "KILO",
+          "cantidad": 46.0,
+          "cantidad_original": 46.0,
+          "precio_unitario": 45.0,
+          "importe": 2070.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Sandia",
+          "presentacion": "KILO",
+          "cantidad": 115.0,
+          "cantidad_original": 115.0,
+          "precio_unitario": 20.5,
+          "importe": 2357.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Te de yerbabuena natural (1000 g)",
+          "presentacion": "KILO",
+          "cantidad": 0.2,
+          "cantidad_original": 0.2,
+          "precio_unitario": 36.5,
+          "importe": 7.3,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Uva procesada deshidratada (1000 g)",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 137.5,
+          "importe": 137.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Uva sin semilla",
+          "presentacion": "KILO",
+          "cantidad": 3.0,
+          "cantidad_original": 3.0,
+          "precio_unitario": 127.5,
+          "importe": 382.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Zanahoria grande",
+          "presentacion": "KILO",
+          "cantidad": 86.0,
+          "cantidad_original": 86.0,
+          "precio_unitario": 16.5,
+          "importe": 1419.0,
+          "tiene_precio": true
+        }
+      ],
+      "subtotal": 45650.3,
+      "total": 45650.3
+    },
+    "Hospital General de Huixtla": {
+      "folio_remision": "0000000035",
+      "estado": "vigente",
+      "estado_actualizado": "2026-04-27T14:12:38",
+      "productos": [
+        {
+          "alimento": "Brócoli",
+          "presentacion": "KILO",
+          "cantidad": 3.0,
+          "cantidad_original": 3.0,
+          "precio_unitario": 24.5,
+          "importe": 73.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Calabacita italiana",
+          "presentacion": "KILO",
+          "cantidad": 3.0,
+          "cantidad_original": 3.0,
+          "precio_unitario": 24.5,
+          "importe": 73.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Canela en raja plástico-sellada o envasada en frasco de vidrio (1000 g)",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 494.5,
+          "importe": 494.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Cebolla blanca grande",
+          "presentacion": "KILO",
+          "cantidad": 15.0,
+          "cantidad_original": 15.0,
+          "precio_unitario": 15.5,
+          "importe": 232.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Chayote sin espinas",
+          "presentacion": "KILO",
+          "cantidad": 10.0,
+          "cantidad_original": 10.0,
+          "precio_unitario": 27.5,
+          "importe": 275.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Chícharo limpio",
+          "presentacion": "KILO",
+          "cantidad": 10.0,
+          "cantidad_original": 10.0,
+          "precio_unitario": 200.5,
+          "importe": 2005.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Cilantro",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 39.5,
+          "importe": 39.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Ciruela roja",
+          "presentacion": "KILO",
+          "cantidad": 3.0,
+          "cantidad_original": 3.0,
+          "precio_unitario": 164.5,
+          "importe": 493.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Durazno (melocotón)",
+          "presentacion": "KILO",
+          "cantidad": 8.0,
+          "cantidad_original": 8.0,
+          "precio_unitario": 149.5,
+          "importe": 1196.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Elote fresco entero",
+          "presentacion": "KILO",
+          "cantidad": 5.0,
+          "cantidad_original": 5.0,
+          "precio_unitario": 58.5,
+          "importe": 292.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Epazote (1000 g)",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 32.5,
+          "importe": 32.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Flor de Jamaica (1000 g)",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 149.5,
+          "importe": 149.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Hoja de plátano (fresca de 1000 g)",
+          "presentacion": "KILO",
+          "cantidad": 3.0,
+          "cantidad_original": 3.0,
+          "precio_unitario": 89.5,
+          "importe": 268.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Jengibre en raíz entera (1000 g)",
+          "presentacion": "KILO",
+          "cantidad": 0.5,
+          "cantidad_original": 0.5,
+          "precio_unitario": 494.5,
+          "importe": 247.25,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Jitomate guaje o guajiro",
+          "presentacion": "KILO",
+          "cantidad": 30.0,
+          "cantidad_original": 30.0,
+          "precio_unitario": 93.5,
+          "importe": 2805.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Lechuga romana",
+          "presentacion": "KILO",
+          "cantidad": 3.0,
+          "cantidad_original": 3.0,
+          "precio_unitario": 32.0,
+          "importe": 96.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Limón con semilla del no. 5",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 46.5,
+          "importe": 93.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Mandarina",
+          "presentacion": "KILO",
+          "cantidad": 6.0,
+          "cantidad_original": 6.0,
+          "precio_unitario": 48.5,
+          "importe": 291.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Manzana",
+          "presentacion": "KILO",
+          "cantidad": 5.0,
+          "cantidad_original": 5.0,
+          "precio_unitario": 76.5,
+          "importe": 382.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Melón chino",
+          "presentacion": "KILO",
+          "cantidad": 6.0,
+          "cantidad_original": 6.0,
+          "precio_unitario": 36.5,
+          "importe": 219.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Naranja",
+          "presentacion": "KILO",
+          "cantidad": 15.0,
+          "cantidad_original": 15.0,
+          "precio_unitario": 25.5,
+          "importe": 382.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Papa blanca grande",
+          "presentacion": "KILO",
+          "cantidad": 6.0,
+          "cantidad_original": 6.0,
+          "precio_unitario": 36.5,
+          "importe": 219.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Papaya roja",
+          "presentacion": "KILO",
+          "cantidad": 6.0,
+          "cantidad_original": 6.0,
+          "precio_unitario": 43.5,
+          "importe": 261.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Pepino grande",
+          "presentacion": "KILO",
+          "cantidad": 6.0,
+          "cantidad_original": 6.0,
+          "precio_unitario": 54.5,
+          "importe": 327.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Pera mantequilla",
+          "presentacion": "KILO",
+          "cantidad": 10.0,
+          "cantidad_original": 10.0,
+          "precio_unitario": 82.5,
+          "importe": 825.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Piña miel",
+          "presentacion": "KILO",
+          "cantidad": 10.0,
+          "cantidad_original": 10.0,
+          "precio_unitario": 32.5,
+          "importe": 325.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Plátano macho",
+          "presentacion": "KILO",
+          "cantidad": 4.0,
+          "cantidad_original": 4.0,
+          "precio_unitario": 37.5,
+          "importe": 150.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Plátano tabasco pza. 200 gr. Aprox. Punta verde",
+          "presentacion": "KILO",
+          "cantidad": 5.0,
+          "cantidad_original": 5.0,
+          "precio_unitario": 45.0,
+          "importe": 225.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Sandia",
+          "presentacion": "KILO",
+          "cantidad": 10.0,
+          "cantidad_original": 10.0,
+          "precio_unitario": 20.5,
+          "importe": 205.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Zanahoria grande",
+          "presentacion": "KILO",
+          "cantidad": 3.0,
+          "cantidad_original": 3.0,
+          "precio_unitario": 16.5,
+          "importe": 49.5,
+          "tiene_precio": true
+        }
+      ],
+      "subtotal": 12728.75,
+      "total": 12728.75
+    },
+    "Hospital Regional Dr. Rafael Pascasio Gamboa Tuxtla": {
+      "folio_remision": "0000000036",
+      "estado": "vigente",
+      "estado_actualizado": "2026-04-27T14:12:38",
+      "productos": [
+        {
+          "alimento": "Aguacate hass",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 57.5,
+          "importe": 115.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Calabacita italiana",
+          "presentacion": "KILO",
+          "cantidad": 5.0,
+          "cantidad_original": 5.0,
+          "precio_unitario": 24.5,
+          "importe": 122.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Champiñón fresco",
+          "presentacion": "KILO",
+          "cantidad": 1.0,
+          "cantidad_original": 1.0,
+          "precio_unitario": 143.5,
+          "importe": 143.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Chayote sin espinas",
+          "presentacion": "KILO",
+          "cantidad": 40.0,
+          "cantidad_original": 40.0,
+          "precio_unitario": 27.5,
+          "importe": 1100.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Ciruela roja",
+          "presentacion": "KILO",
+          "cantidad": 10.0,
+          "cantidad_original": 10.0,
+          "precio_unitario": 164.5,
+          "importe": 1645.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Ejote",
+          "presentacion": "KILO",
+          "cantidad": 3.0,
+          "cantidad_original": 3.0,
+          "precio_unitario": 44.5,
+          "importe": 133.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Jitomate guaje o guajiro",
+          "presentacion": "KILO",
+          "cantidad": 15.0,
+          "cantidad_original": 15.0,
+          "precio_unitario": 93.5,
+          "importe": 1402.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Lechuga romana",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 32.0,
+          "importe": 64.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Mango manila",
+          "presentacion": "KILO",
+          "cantidad": 25.0,
+          "cantidad_original": 25.0,
+          "precio_unitario": 149.5,
+          "importe": 3737.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Manzana",
+          "presentacion": "KILO",
+          "cantidad": 12.0,
+          "cantidad_original": 12.0,
+          "precio_unitario": 76.5,
+          "importe": 918.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Naranja",
+          "presentacion": "KILO",
+          "cantidad": 20.0,
+          "cantidad_original": 20.0,
+          "precio_unitario": 25.5,
+          "importe": 510.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Papaya roja",
+          "presentacion": "KILO",
+          "cantidad": 6.0,
+          "cantidad_original": 6.0,
+          "precio_unitario": 43.5,
+          "importe": 261.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Pepino grande",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 54.5,
+          "importe": 109.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Pera mantequilla",
+          "presentacion": "KILO",
+          "cantidad": 8.0,
+          "cantidad_original": 8.0,
+          "precio_unitario": 82.5,
+          "importe": 660.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Pimiento morrón fresco",
+          "presentacion": "KILO",
+          "cantidad": 2.0,
+          "cantidad_original": 2.0,
+          "precio_unitario": 119.5,
+          "importe": 239.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Plátano dominico",
+          "presentacion": "KILO",
+          "cantidad": 7.0,
+          "cantidad_original": 7.0,
+          "precio_unitario": 89.5,
+          "importe": 626.5,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Plátano tabasco pza. 200 gr. Aprox. Punta verde",
+          "presentacion": "KILO",
+          "cantidad": 15.0,
+          "cantidad_original": 15.0,
+          "precio_unitario": 45.0,
+          "importe": 675.0,
+          "tiene_precio": true
+        },
+        {
+          "alimento": "Zanahoria grande",
+          "presentacion": "KILO",
+          "cantidad": 10.0,
+          "cantidad_original": 10.0,
+          "precio_unitario": 16.5,
+          "importe": 165.0,
+          "tiene_precio": true
+        }
+      ],
+      "subtotal": 12627.0,
+      "total": 12627.0
+    }
+  },
+  "ajustes": [
+    {
+      "tipo": "modificacion_pedido",
+      "timestamp": "2026-04-28T02:39:29",
+      "hospital": "Hospital Básico Comunitario 12 Camas Berriozabal",
+      "cambios": [
+        {
+          "operacion": "agregar",
+          "alimento": "Chile seco mulato",
+          "presentacion": "KG",
+          "cantidad_anterior": 0.0,
+          "cantidad_nueva": 1.0,
+          "diferencia_cantidad": 1.0,
+          "precio_unitario": 265.5,
+          "importe_anterior": 0.0,
+          "importe_nuevo": 265.5,
+          "diferencia_importe": 265.5
+        }
+      ],
+      "no_encontrados": [],
+      "diferencia_total": 265.5
+    }
+  ]
+}

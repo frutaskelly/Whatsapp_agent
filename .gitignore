@@ -1,17 +1,23 @@
-# Variables de entorno - NUNCA SUBIR
+# ⚠️ Repo privado, pero secrets se manejan ENCRIPTADOS (Fernet/AES-128).
+# Los .env y secrets/*.json crudos NUNCA se commitean — solo sus .enc.
+# La llave de cifrado vive FUERA del repo (../.frutaskelly_secrets.key).
+
+# Archivos sensibles en CLARO (NO commitear)
 .env
 .env.local
 .env.production
 *.env
 !.env.example
+!*.env.enc
+!.env.enc
 
-# Credenciales y secretos - NUNCA SUBIR
-secrets/
-*.json
-!.vscode/*.json
-!app/*.json
-!storage/conversations/.gitkeep
-!storage/inbox/.gitkeep
+# Llave de cifrado (vive FUERA del repo, defensivo por si la copian dentro)
+*.key
+.frutaskelly_secrets.key
+
+# Credenciales OAuth en CLARO (los .enc sí se commitean)
+secrets/*.json
+!secrets/*.json.enc
 
 # Python
 __pycache__/
@@ -23,21 +29,6 @@ venv/
 env/
 ENV/
 .venv
-
-# Storage local
-storage/inbox/*
-storage/conversations/*
-storage/processed/*
-storage/message_log.jsonl
-storage/event_log.jsonl
-storage/folio_counter.json
-storage/pedidos_dia/
-storage/extras_dia/
-storage/raw_webhooks/
-!storage/inbox/.gitkeep
-!storage/conversations/.gitkeep
-!storage/processed/.gitkeep
-!storage/keywords.json
 
 # IDEs
 .vscode/*
@@ -51,7 +42,7 @@ storage/raw_webhooks/
 .DS_Store
 Thumbs.db
 
-# Logs
+# Logs locales (efímeros, regenerables)
 *.log
 logs/
 
@@ -60,5 +51,29 @@ dist/
 build/
 *.egg-info/
 
-# Backups locales (snapshots de operación)
+# Backups locales
 backups/
+
+# Storage efímero (regenerable)
+storage/inbox/*
+!storage/inbox/.gitkeep
+storage/conversations/*
+!storage/conversations/.gitkeep
+storage/processed/*
+!storage/processed/.gitkeep
+storage/raw_webhooks/
+
+# Logs de eventos y mensajes — pueden crecer mucho
+storage/event_log.jsonl
+storage/message_log.jsonl
+
+# ====================================================================
+# Lo que SÍ se commitea:
+#   - .env.enc, secrets/*.json.enc (credenciales encriptadas)
+#   - data/Lista_Precios_EHMO.xlsx
+#   - storage/keywords.json
+#   - storage/folio_counter*.json
+#   - storage/pedidos_dia/*.json
+#   - storage/extras_dia/*.json
+#   - tools/secrets_crypto.py (script de encriptado)
+# ====================================================================

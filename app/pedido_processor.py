@@ -381,8 +381,15 @@ def fecha_a_iso(fecha_str: str | None, year: int | None = None) -> str | None:
 
 
 def procesar_pedido(input_excel: Path, output_dir: Path,
-                    original_filename: str | None = None) -> dict | None:
+                    original_filename: str | None = None,
+                    force_overwrite: bool = False) -> dict | None:
     """Procesa un Excel EHMO con hoja BD.
+
+    Si ya existe un JSON de estado para el día detectado y `force_overwrite`
+    es False (default), aborta y devuelve un dict con error explicativo —
+    para evitar destruir ajustes/modificaciones/folios ya emitidos por
+    re-upload accidental del BD original. Para forzar reproceso, llamar
+    explícitamente con `force_overwrite=True`.
 
     Devuelve un dict con:
       - output_path: Path del Excel generado
@@ -432,6 +439,46 @@ def procesar_pedido(input_excel: Path, output_dir: Path,
     # ─── Fecha ───────────────────────────────────────────────────────────────
     fecha_str = _extraer_fecha(original_filename or input_excel.name,
                                 excel_path=input_excel)
+
+    # ─── Salvaguarda: día ya existente ──────────────────────────────────────
+    # Si ya tenemos JSON state para este día, NO reprocesamos por default —
+    # eso destruiría ajustes, folios emitidos y modificaciones registradas.
+    # El llamador debe pasar force_overwrite=True explícitamente.
+    fecha_iso_check = fecha_a_iso(fecha_str)
+    if fecha_iso_check and not force_overwrite:
+        from .estado_pedido import cargar_estado
+        state_existente = cargar_estado(fecha_iso_check)
+        if state_existente:
+            ajustes_n = len(state_existente.get("ajustes", []))
+            folios = [info.get("folio_remision") for info in
+                      state_existente.get("hospitales", {}).values()
+                      if info.get("folio_remision")]
+            folio_min = min(folios) if folios else "?"
+            folio_max = max(folios) if folios else "?"
+            msg = (f"⚠️ Ya existe un pedido procesado para {fecha_str} "
+                   f"({fecha_iso_check}) con {len(state_existente.get('hospitales', {}))} "
+                   f"hospitales (folios {folio_min}-{folio_max}) y {ajustes_n} ajuste(s) "
+                   f"registrado(s). NO se sobrescribió para no perder el trabajo. "
+                   f"Si estás SEGURO de querer reprocesar desde cero (perderás ajustes, "
+                   f"se asignarán folios nuevos y se sobrescribirá Drive), responde "
+                   f"explícitamente: \"reprocesa el {fecha_str} desde cero, sí estoy seguro\".")
+            log.warning(msg)
+            log_event("processor",
+                      f"🛡️ Reproceso bloqueado para {fecha_iso_check} (ya existe estado)",
+                      {"fecha_iso": fecha_iso_check,
+                       "hospitales": len(state_existente.get("hospitales", {})),
+                       "ajustes_registrados": ajustes_n,
+                       "folios_emitidos": f"{folio_min}-{folio_max}"},
+                      level="warn")
+            return {
+                "error": "estado_existente",
+                "mensaje_para_operador": msg,
+                "fecha": fecha_str,
+                "fecha_iso": fecha_iso_check,
+                "hospitales_existentes": len(state_existente.get("hospitales", {})),
+                "ajustes_registrados": ajustes_n,
+            }
+
     parts = fecha_str.lower().split()
     dia = parts[0] if parts else "fecha"
     mes_corto = MESES.get(parts[-1], parts[-1][:3]) if parts else "fec"

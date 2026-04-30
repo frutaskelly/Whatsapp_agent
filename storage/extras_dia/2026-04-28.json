@@ -1,0 +1,47 @@
+{
+  "fecha": "2026-04-28",
+  "fecha_legible": "28 de abril",
+  "creado": "2026-04-28T06:47:21",
+  "ultima_modificacion": "2026-04-28T06:47:21",
+  "extras": [
+    {
+      "id": "bc6eb6ec",
+      "hospital": "Hospital de las Culturas San Cristóbal de las Casas",
+      "alimento": "Manzana",
+      "presentacion": "KILO",
+      "cantidad": 5.0,
+      "precio_unitario": 76.5,
+      "importe": 382.5,
+      "motivo": "Remisión aparte solicitada por operador",
+      "tiene_precio": true,
+      "agregado": "2026-04-28T06:47:21"
+    },
+    {
+      "id": "251ee2bc",
+      "hospital": "Hospital de las Culturas San Cristóbal de las Casas",
+      "alimento": "Plátano tabasco pza. 200 gr. Aprox. Punta verde",
+      "presentacion": "KILO",
+      "cantidad": 10.0,
+      "precio_unitario": 45.0,
+      "importe": 450.0,
+      "motivo": "Remisión aparte solicitada por operador",
+      "tiene_precio": true,
+      "agregado": "2026-04-28T06:47:21"
+    },
+    {
+      "id": "2eeb5f2a",
+      "hospital": "Hospital de las Culturas San Cristóbal de las Casas",
+      "alimento": "Ciruela roja",
+      "presentacion": "KILO",
+      "cantidad": 6.0,
+      "precio_unitario": 164.5,
+      "importe": 987.0,
+      "motivo": "Remisión aparte solicitada por operador",
+      "tiene_precio": true,
+      "agregado": "2026-04-28T06:47:21"
+    }
+  ],
+  "folios_por_destino": {
+    "Hospital de las Culturas San Cristóbal de las Casas": "0000000037"
+  }
+}

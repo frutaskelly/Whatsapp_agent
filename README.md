@@ -2,6 +2,10 @@
 
 Agente conversacional con WhatsApp Business API + Claude AI para recibir y procesar pedidos de hospitales (Lote 5: Frutas y Verduras).
 
+> 📥 **Setup rápido:** ver **[INSTALL.md](INSTALL.md)** (quickstart copy-paste)
+> 🚀 **Deploy y operación:** ver **[LAUNCH_GUIDE.md](LAUNCH_GUIDE.md)**
+> 📋 **Contexto del proyecto:** ver **[HANDOFF.md](HANDOFF.md)**
+
 ## ¿Qué hace?
 
 EHMO (cliente) manda mensajes por WhatsApp en cualquier formato:

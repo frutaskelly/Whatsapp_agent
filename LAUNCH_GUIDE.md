@@ -1,5 +1,11 @@
 # Launch Guide — Frutas Kelly WhatsApp Agent
 
+> 📥 **¿Primera vez configurando el sistema?** Empieza por **[INSTALL.md](INSTALL.md)** que tiene
+> el quickstart copy-paste y troubleshooting de la instalación. Este doc cubre
+> deploy a Render, mantenimiento operativo y rotación de tokens.
+
+---
+
 > 🔐 **CREDENCIALES ENCRIPTADAS**
 > Los secrets sensibles (`.env`, `secrets/*.json`) viven en el repo
 > **encriptados** con Fernet (AES-128 + HMAC). Lo crudo está gitignored;

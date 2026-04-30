@@ -64,6 +64,14 @@ LUGAR_EXPEDICION = (
 #   - cliente_id (para el campo "(N) NOMBRE")
 #   - tipo de línea descriptiva (DIF ENTREGA / COMEDORES HUMANITARIOS)
 #   - archivo de folio counter
+_SUREÑA_DATA = {
+    "nombre": "GRUPO SUREÑA",
+    "rfc": "GSU110118GL0",
+    "cp": "78390",
+    "cliente_id": 2,
+    "linea_tipo": "comedores",  # → "SEMANA N: COMEDORES HUMANITARIOS ENTREGA <DIA> ... EN <comedor>."
+    "folio_file": "folio_counter_comedores.json",
+}
 CLIENTES = {
     "EHMO": {
         "nombre": "GRUPO OPERADOR DE ALIMENTOS EHMO",
@@ -73,14 +81,10 @@ CLIENTES = {
         "linea_tipo": "ehmo",  # → "SEMANA N: DIF ENTREGA <DIA> ... EN: <hospital>"
         "folio_file": "folio_counter.json",
     },
-    "SUREÑA": {
-        "nombre": "GRUPO SUREÑA",
-        "rfc": "GSU110118GL0",
-        "cp": "78390",
-        "cliente_id": 2,
-        "linea_tipo": "comedores",  # → "SEMANA N: COMEDORES HUMANITARIOS ENTREGA <DIA> ... EN <comedor>."
-        "folio_file": "folio_counter_comedores.json",
-    },
+    # Soportar ambas variantes con/sin eñe (clientes.json y agentes.json
+    # usan SURENA sin eñe; código histórico usaba SUREÑA con eñe).
+    "SUREÑA": _SUREÑA_DATA,
+    "SURENA": _SUREÑA_DATA,
 }
 
 # Constantes legacy (mantienen compatibilidad con código viejo). Apuntan al EHMO

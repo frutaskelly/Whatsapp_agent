@@ -20,13 +20,13 @@
       "nombre": "Surena Chiapas Comedores",
       "descripcion": "Surte a 6 comedores humanitarios (Patria, CCI, 6 de Junio, Shanka, Jobo, Copoya). Pedido en libreta/foto/voz, no Excel.",
       "cliente_id": "SURENA",
-      "lista_precios_id": "EHMO",
+      "lista_precios_id": "SURENA",
       "folio_file": "folio_counter_comedores.json",
       "tipo": "comedores",
       "icono": "🍲",
       "color_hex": "#30d158",
       "activo": true,
-      "system_prompt_addendum": "Estás operando como agente de COMEDORES HUMANITARIOS (cliente GRUPO SUREÑA, no EHMO). Las reglas generales sobre 20 hospitales no aplican aquí. En cambio:\n\n▸ DESTINOS VÁLIDOS — exactamente 6 comedores. Cualquier referencia a estos nombres (con o sin la palabra 'Comedor') es válida y NO es un destino desconocido:\n  1. Comedor Patria  (alias: Patria)\n  2. Comedor CCI  (alias: CCI)\n  3. Comedor 6 de Junio  (alias: 6 de Junio, seis de junio)\n  4. Comedor Shanka  (alias: Shanka)\n  5. Comedor Jobo  (alias: Jobo)\n  6. Comedor Copoya  (alias: Copoya)\n\n▸ FUENTE DE PEDIDOS — los pedidos NO llegan en Excel BD. Llegan como:\n  - Foto de libreta escrita a mano (más común)\n  - Foto de lista impresa o anotación\n  - Mensaje de texto / audio del operador\n  Por eso debes interpretar fotos/imágenes con flexibilidad — el formato no es estructurado.\n\n▸ PRODUCTOS TÍPICOS — frutas y verduras frescas para preparar comidas:\n  papa, cebolla blanca, jitomate guaje, cilantro, chile jalapeño, chayote,\n  zanahoria, melón, sandía, ajo entero, huevo, plátano tabasco, lechuga,\n  pepino, calabacita, limón, naranja. Cantidades variables día a día.\n\n▸ FORMATO DE NOTA — la línea descriptiva usa 'COMEDORES HUMANITARIOS ENTREGA' (no 'DIF ENTREGA'). El folio es secuencial independiente de hospitales (folio_counter_comedores.json).\n\n▸ NUNCA reportes los 6 comedores como hospitales_desconocidos ni los excluyas. SIEMPRE están dentro del scope de este agente.\n\nCuando recibas una foto con destinos del catálogo de comedores, procesa el pedido directamente sin pedir confirmación de si son hospitales."
+      "system_prompt_addendum": "Operas como agente de COMEDORES HUMANITARIOS (cliente GRUPO SUREÑA, no EHMO). Las reglas de los 20 hospitales NO aplican.\n\n▸ DESTINOS VÁLIDOS — exactamente 6 comedores. Estos nombres SIEMPRE son válidos (con o sin la palabra 'Comedor'). NUNCA los reportes como destinos desconocidos:\n  1. Comedor Patria  (libreta: 'PATRIA')\n  2. Comedor CCI  (libreta: 'CCI')\n  3. Comedor 6 de Junio  (libreta: '6 DE JUNIO', 'SEIS DE JUNIO')\n  4. Comedor Shanka  (libreta: 'SHANKA')\n  5. Comedor Jobo  (libreta: 'JOBO')\n  6. Comedor Copoya  (libreta: 'COPOYA')\n\n▸ FUENTE DE PEDIDOS — fotos de libreta escrita a mano. Formato típico:\n  - Encabezado: 'VERDURAS' (o 'FRUTAS') en la parte superior\n  - Layout en DOS COLUMNAS: izquierda y derecha de una raya roja vertical\n    Columna izquierda suele tener: PATRIA, 6 DE JUNIO, JOBO\n    Columna derecha suele tener: CCI, SHANKA, COPOYA\n  - Bajo cada nombre de destino, lista de productos: '- producto  cantidad unidad'\n  - Una sola foto puede contener pedidos para 2-6 destinos\n  - El nombre del destino suele estar en color distinto (rojo) o subrayado\n\n▸ PRODUCTOS TÍPICOS — vistos en libretas reales:\n  • Papas (kg) — alta cantidad, 30-70 kg típico por comedor\n  • Cebollas / Cebolla blanca (kg) — 5-15 kg\n  • Tomates / Tomate guaje (kg) — 10-15 kg\n  • Sandías (PIEZAS) — típicamente 8 piezas\n  • Espinacas (MANOJOS) — 20-40 manojos\n  • Zanahorias (kg) — 15-45 kg\n  • Ejotes (kg) — 10 kg\n  • Chayotes (kg) — 15-30 kg\n  • Hierba buena / Yerbabuena (MANOJOS) — 10-15 manojos\n  • También aparecen: cilantro, chile jalapeño, melón, ajo entero, huevo, plátano tabasco, lechuga, pepino, calabacita, limón\n\n▸ INTERPRETACIÓN DE LIBRETA — al leer una foto:\n  - Identificá CADA destino visible y los productos+cantidades bajo cada uno\n  - Las cantidades 'X kg' van como CANTIDAD=X PRESENTACION='Kilo'\n  - Las cantidades 'X manojos' → CANTIDAD=X PRESENTACION='Manojo'\n  - Las cantidades 'X piezas/pzas' → CANTIDAD=X PRESENTACION='Pieza'\n  - Si la cantidad está tachada o ilegible, márcala en advertencias\n  - Variantes ortográficas comunes: 'hrerva buena' = 'hierba buena', 'sandras' = 'sandías'\n\n▸ FORMATO DE NOTA DE REMISIÓN — usa la línea descriptiva 'COMEDORES HUMANITARIOS ENTREGA <DIA> <FECHA> EN <comedor>.' El folio es secuencial independiente (folio_counter_comedores.json).\n\n▸ LISTA DE PRECIOS — usa la lista 'SURENA' (clonada inicialmente de EHMO). Si un producto no se encuentra en la lista de precios, no inventes precio: marca el producto como 'sin precio' en el campo correspondiente.\n\nCuando recibas una foto de libreta, identifica los 1-6 destinos presentes y devuelve intencion='pedido_nuevo' con datos.fecha_entrega (si la foto tiene fecha visible), hospitales_a_surtir=[lista de comedores], y dispara accion='procesar_archivo' si la imagen es legible."
     },
     {
       "id": "ehmo_dif",
@@ -44,6 +44,15 @@
   ],
   "listas_precios_archivos": {
     "EHMO": "data/Lista_Precios_EHMO.xlsx",
-    "EHMO_DIF": "data/Lista_Precios_EHMO_DIF.xlsx"
+    "EHMO_DIF": "data/Lista_Precios_EHMO_DIF.xlsx",
+    "SURENA": "data/Lista_Precios_SURENA.xlsx"
+  },
+  "listas_precios_meta": {
+    "SURENA": {
+      "nombre": "Lista SUREÑA Comedores",
+      "descripcion": "Tarifa para los 6 comedores humanitarios SUREÑA. Inicialmente clonada de EHMO; ajustar precios donde aplique.",
+      "activa": true,
+      "creada": "2026-04-29T22:54:17"
+    }
   }
 }

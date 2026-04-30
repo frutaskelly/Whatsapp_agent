@@ -94,10 +94,14 @@ def recargar_keywords() -> dict:
     """Limpia el cache de keywords.json. Útil para aplicar cambios sin reiniciar."""
     _extra_keywords.cache_clear()
     extra = _extra_keywords()
+    # También recargar presentaciones_override (mismo archivo, cache distinto)
+    from .display_names import recargar_presentaciones
+    pres_stats = recargar_presentaciones()
     return {
         "cambio_kw_extra": len(extra.get("cambio_kw", [])),
         "ignorar_kw_extra": len(extra.get("ignorar_kw", [])),
         "excluidos_kw_extra": len(extra.get("excluidos_kw", [])),
+        "presentaciones_extras": pres_stats.get("extras_json", 0),
     }
 
 

@@ -29,7 +29,7 @@ from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib import colors as rl_colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import cm
-from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.platypus import (
     SimpleDocTemplate, Table as RlTable, TableStyle as RlTableStyle,
     Paragraph, Spacer,
@@ -452,6 +452,15 @@ def generar_relacion_dia_pdf(fecha_iso: str,
         fontSize=11, leading=13, alignment=TA_CENTER,
         textColor=rl_colors.HexColor("#444"), spaceAfter=8,
     )
+    # Estilos para celdas que se ajustan al ancho de la columna (con wrap).
+    # Wrap por palabras (no CJK), para que "SEMANA 17" no se rompa a "SEMA\nNA".
+    style_cell = ParagraphStyle(
+        "cell", parent=styles["Normal"],
+        fontSize=8, leading=10, alignment=TA_LEFT,
+    )
+    style_cell_center = ParagraphStyle(
+        "cell_c", parent=style_cell, alignment=TA_CENTER,
+    )
 
     elements = [
         Paragraph("REMISIÓN Y FACTURACIÓN DE HOSPITALES CHIAPAS — PROYECTO EHMO",
@@ -513,13 +522,13 @@ def generar_relacion_dia_pdf(fecha_iso: str,
             estatus_row_styles.append((i, est_bg))
         data.append([
             str(i),
-            semana_label,
-            fecha_dia_legible,
-            hospital,
+            Paragraph(semana_label, style_cell_center),
+            Paragraph(fecha_dia_legible, style_cell_center),
+            Paragraph(hospital, style_cell),
             folio,
             f"${total:,.2f}",
             fecha_iso,
-            est_text,
+            Paragraph(est_text, style_cell_center),
             "",   # # factura
             "",   # total factura
             "",   # fecha elab factura
@@ -542,15 +551,15 @@ def generar_relacion_dia_pdf(fecha_iso: str,
             estatus_row_styles.append((idx, est_bg))
         data.append([
             str(idx),
-            semana_label,
-            fecha_dia_legible,
-            f"{ext['destino']} (EXTRA)",
+            Paragraph(semana_label, style_cell_center),
+            Paragraph(fecha_dia_legible, style_cell_center),
+            Paragraph(f"{ext['destino']} (EXTRA)", style_cell),
             folio,
             f"${ext['total']:,.2f}",
             fecha_iso,
-            est_text,
+            Paragraph(est_text, style_cell_center),
             "", "", "",
-            f"Cubrir desabasto ({ext['items']} productos)",
+            Paragraph(f"Cubrir desabasto ({ext['items']} productos)", style_cell),
         ])
 
     # Fila de total
@@ -560,8 +569,10 @@ def generar_relacion_dia_pdf(fecha_iso: str,
         "", "", "", "", "", "",
     ])
 
-    # Anchos de columna optimizados para letter horizontal (~26.3 cm útil)
-    col_widths = [0.7, 1.7, 1.7, 6.5, 1.9, 2.1, 1.6, 2.0, 1.6, 1.7, 1.7, 2.7]
+    # Anchos de columna optimizados para letter horizontal (~26.3 cm útil).
+    # SEMANA 1.7 (cabe "SEMANA 17"); ESTATUS 2.3 ("Modificado" en una línea);
+    # HOSPITAL 6.3 para compensar; FECHA ELAB 1.7 ("2026-04-28").
+    col_widths = [0.7, 1.7, 1.7, 6.3, 1.9, 2.1, 1.7, 2.3, 1.6, 1.7, 1.7, 2.6]
     table = RlTable(
         data, colWidths=[w * cm for w in col_widths], repeatRows=1,
     )

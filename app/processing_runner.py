@@ -537,9 +537,40 @@ def _procesar_libreta_desde_ai(phone: str, ai_result: dict,
         lines.append(f"🛒 Lista de compras (consolidada PDF): {result['drive_lc_pdf']['link']}")
     if result.get("drive_lc_xlsx"):
         lines.append(f"📝 Lista de compras (Excel editable): {result['drive_lc_xlsx']['link']}")
+
+    # Identificar productos que NO son kg (vinieron en manojos, piezas, caja...)
+    # para pedir explícitamente sus pesos reales.
+    no_kg_por_destino: dict[str, list[str]] = {}
+    for d in (datos.get("destinos") or []):
+        destino_nombre = (d.get("destino") or "").strip()
+        if not destino_nombre:
+            continue
+        # Normaliza el nombre como hace libreta_processor
+        if not destino_nombre.lower().startswith("comedor "):
+            CONOCIDOS = {"patria", "cci", "6 de junio", "seis de junio",
+                          "shanka", "jobo", "copoya"}
+            if destino_nombre.lower() in CONOCIDOS:
+                destino_nombre = f"Comedor {destino_nombre}"
+        no_kg_items = []
+        for p in (d.get("productos") or []):
+            pres = (p.get("presentacion") or "").lower().strip()
+            if pres and not pres.startswith(("kg", "kil")):
+                cant = p.get("cantidad")
+                alimento = p.get("alimento") or ""
+                no_kg_items.append(f"{alimento.strip().lower()} ({cant} {p.get('presentacion')})")
+        if no_kg_items:
+            no_kg_por_destino[destino_nombre] = no_kg_items
+
     lines.append("")
-    lines.append("⚖️ Cuando termines de surtir, mándame los pesos reales (kg) por comedor "
-                 "para emitir las notas de remisión con precios.")
+    if no_kg_por_destino:
+        lines.append("⚖️ *Cuando termines de surtir, mándame los KG reales de los productos en otras unidades:*")
+        for destino, items in no_kg_por_destino.items():
+            lines.append(f"   • *{destino}*: {', '.join(items)}")
+        lines.append("")
+        lines.append("Los productos que pediste en kg ya están listos (no hace falta repesar a menos que cambien).")
+        lines.append("Con esos pesos genero la nota de remisión con precios.")
+    else:
+        lines.append("⚖️ Todos los productos vinieron en kg. Confirma cuando termines de surtir si los kg cambiaron, sino emito la nota tal cual.")
     msg = "\n".join(lines)
     out_meta = {"libreta": True, "fecha_iso": fecha_iso,
                 "destinos": result["destinos"]}

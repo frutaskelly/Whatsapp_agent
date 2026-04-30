@@ -41,7 +41,7 @@ def maybe_process(phone: str, attachment_path: Path | None, ai_result: dict,
 
     # Caso 0b: consolidar notas vigentes en un solo PDF
     if accion == "consolidar_notas":
-        return _consolidar_notas(phone, fecha_iso=fecha_iso_pedida)
+        return _consolidar_notas(phone, fecha_iso=fecha_iso_pedida, agente=agente)
 
     # Caso 0c: generar/regenerar la relación de documentos del día
     if accion == "generar_relacion":
@@ -965,25 +965,64 @@ def _recargar_precios(phone: str) -> dict:
     return {"reload_prices": True, "count": len(items)}
 
 
-def _consolidar_notas(phone: str, fecha_iso: str | None = None) -> dict:
+def _consolidar_notas(phone: str, fecha_iso: str | None = None,
+                       agente: dict | None = None) -> dict:
     """Genera un PDF único con TODAS las notas vigentes (estado actual).
 
-    Si fecha_iso se pasa, opera sobre ESE día. Sino, sobre el más reciente.
+    Si fecha_iso se pasa, opera sobre ESE día. Sino:
+      - Si hay `agente`, busca el día más reciente con destinos del tipo
+        del agente (no toma cualquier día).
+      - Sin agente, toma el día más reciente.
     Útil para imprimir todas las notas finales después de modificaciones/ajustes.
+
+    Filtra los destinos del state por agent.tipo (comedores/hospitales/dif)
+    antes de consolidar — para que SUREÑA Comedores no incluya hospitales
+    EHMO ni viceversa.
     """
-    from .estado_pedido import cargar_estado, cargar_estado_mas_reciente, estado_a_dataframe
+    from .estado_pedido import (cargar_estado, cargar_estado_mas_reciente,
+                                  estado_a_dataframe, listar_fechas_disponibles,
+                                  _destino_pertenece_al_agente)
     from .nota_remision import generar_notas_remision
     from datetime import datetime
     from . import config
 
+    agente_tipo = (agente or {}).get("tipo")
+    cliente_id = (agente or {}).get("cliente_id", "EHMO")
+
+    state = None
     if fecha_iso:
         state = cargar_estado(fecha_iso)
+    elif agente_tipo:
+        # Buscar el día más reciente con destinos del agente
+        for f in listar_fechas_disponibles():
+            s = cargar_estado(f)
+            if not s: continue
+            if any(_destino_pertenece_al_agente(h, agente_tipo)
+                    for h in s.get("hospitales", {}).keys()):
+                state = s
+                fecha_iso = f
+                break
     else:
         state, fecha_iso = cargar_estado_mas_reciente()
     if not state:
-        msg = "⚠️ No hay pedido del día procesado, no puedo consolidar notas."
-        message_log.log_message("out", phone, "text", msg, {"consolidar": False})
+        msg = "⚠️ No hay pedido del día procesado para este agente, no puedo consolidar notas."
+        message_log.log_message("out", phone, "text", msg, {"consolidar": False,
+                                                              "agent_id": (agente or {}).get("id")})
         return {"error": "no hay pedido"}
+
+    # Filtrar el state para incluir solo destinos del tipo de agente activo.
+    # Trabajamos sobre una copia para no mutar el state en disco.
+    if agente_tipo:
+        import copy
+        state = copy.deepcopy(state)
+        state["hospitales"] = {h: info for h, info in state.get("hospitales", {}).items()
+                                 if _destino_pertenece_al_agente(h, agente_tipo)}
+        if not state["hospitales"]:
+            msg = (f"⚠️ El día {fecha_iso} no tiene destinos del tipo '{agente_tipo}' "
+                   f"para consolidar.")
+            message_log.log_message("out", phone, "text", msg,
+                                     {"consolidar": False, "agent_id": (agente or {}).get("id")})
+            return {"error": "sin destinos del agente"}
 
     df = estado_a_dataframe(state)
     if df.empty:
@@ -1003,7 +1042,8 @@ def _consolidar_notas(phone: str, fecha_iso: str | None = None) -> dict:
     notas_count = 0
     try:
         info = generar_notas_remision(df, fecha_legible, output_path,
-                                       folios_existentes=folios_existentes)
+                                       folios_existentes=folios_existentes,
+                                       cliente=cliente_id)
         notas_count = info.get("hospitales", 0)
         drive_info = drive_upload(output_path, subfolder=fecha_iso)
         if drive_info:

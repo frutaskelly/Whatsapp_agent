@@ -310,9 +310,16 @@ Cada folio tiene un estado: 🆕 vigente · 🔄 modificado · ✅ aceptado · �
      - "consolida las notas"
      - "necesito las notas actualizadas en un solo PDF"
      - "imprime las notas vigentes"
+     - "imprime notas de remision"
+     - "imprime las notas del día 28"      (con día específico)
+     - "imprimi notas remision del 28"
      - "júntame las notas corregidas para imprimir"
    Responde breve: "Consolido las notas vigentes, te paso el PDF."
    accion = "consolidar_notas".
+   IMPORTANTE: si el operador menciona un día (ej. "del 28", "del 25 de
+   abril", "ayer"), agrega datos.fecha_iso="YYYY-MM-DD" para que el
+   sistema use ESE día. NUNCA uses accion="nada" cuando el operador
+   pide imprimir/consolidar notas — siempre dispara consolidar_notas.
 
 ▸ D) RECARGAR LISTA DE PRECIOS → "recargar_precios"
    El operador acaba de editar Lista_Precios_EHMO.xlsx (agregó productos

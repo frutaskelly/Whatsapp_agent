@@ -194,6 +194,111 @@
   .view { display: none; flex: 1; min-height: 0; flex-direction: column; }
   .view.active { display: flex; }
 
+  /* ── Agent bar (selector arriba del Sandbox) ──────────────── */
+  .agent-bar {
+    display: flex; align-items: center; gap: var(--space-3);
+    padding: var(--space-2) var(--space-5);
+    background: var(--bg-1);
+    border-bottom: 0.5px solid var(--separator);
+    flex-shrink: 0;
+  }
+  .agent-bar-label {
+    font-size: var(--fs-caption); color: var(--text-2);
+    text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600;
+  }
+  .agent-select {
+    background: var(--bg-2); color: var(--text-1);
+    border: 0.5px solid var(--separator);
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius-md);
+    font-size: var(--fs-callout); font-weight: 500;
+    outline: none; cursor: pointer;
+    transition: border-color var(--t-fast) var(--ease);
+  }
+  .agent-select:hover { border-color: var(--accent); }
+  .agent-select:focus { border-color: var(--accent); }
+  .agent-meta {
+    font-size: var(--fs-footnote); color: var(--text-2);
+    margin-left: auto;
+  }
+  .agent-meta b { color: var(--text-1); font-weight: 600; }
+
+  /* ── Cards de agentes ──────────────────────────────────────── */
+  .agente-card {
+    background: var(--bg-1);
+    border: 0.5px solid var(--separator-soft);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5) var(--space-6);
+    margin-bottom: var(--space-4);
+    box-shadow: var(--shadow-1);
+  }
+  .agente-card .head {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: var(--space-3); margin-bottom: var(--space-3);
+  }
+  .agente-card .head .ico-block {
+    font-size: 32px; line-height: 1;
+    width: 56px; height: 56px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: var(--radius-md);
+    background: var(--bg-2);
+    flex-shrink: 0;
+  }
+  .agente-card .head .titles { flex: 1; min-width: 0; }
+  .agente-card h3 {
+    margin: 0 0 var(--space-1);
+    font-size: var(--fs-title-1); line-height: var(--lh-title-1);
+    font-weight: var(--fw-title-1);
+    letter-spacing: -0.01em;
+  }
+  .agente-card .id-tag {
+    font-size: var(--fs-caption); color: var(--text-2);
+    font-family: var(--font-mono);
+  }
+  .agente-card .head .estado-toggle {
+    display: flex; align-items: center; gap: var(--space-2);
+  }
+  .agente-card .grid {
+    display: grid; grid-template-columns: 160px 1fr;
+    gap: var(--space-2) var(--space-4);
+    align-items: center;
+    margin-top: var(--space-3);
+  }
+  .agente-card .grid label {
+    color: var(--text-2);
+    font-size: var(--fs-footnote); font-weight: 500;
+  }
+  .agente-card .grid input,
+  .agente-card .grid select,
+  .agente-card .grid textarea {
+    background: var(--bg-input);
+    border: 1px solid transparent;
+    color: var(--text-1);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    font-size: var(--fs-footnote);
+    outline: none; width: 100%;
+    transition: border-color var(--t-fast) var(--ease);
+  }
+  .agente-card .grid input:focus,
+  .agente-card .grid select:focus,
+  .agente-card .grid textarea:focus { border-color: var(--accent); }
+  .agente-card .grid input.changed,
+  .agente-card .grid select.changed,
+  .agente-card .grid textarea.changed {
+    border-color: var(--warning); background: var(--warning-soft);
+  }
+  .agente-card .card-actions {
+    margin-top: var(--space-4);
+    display: flex; gap: var(--space-2); justify-content: flex-end;
+  }
+  .agente-card .badge-default {
+    background: var(--success-soft); color: var(--success);
+    padding: 2px 8px; border-radius: var(--radius-pill);
+    font-size: var(--fs-caption); font-weight: 600;
+  }
+
   /* ── Sandbox (estilo iMessage) ─────────────────────────────── */
   .sandbox-layout { flex: 1; display: flex; min-height: 0; }
   .sandbox-main {
@@ -853,6 +958,7 @@
     <div class="nav-item" data-view="reports"><span class="ico">📋</span><span>Reportes</span></div>
 
     <div class="group-label">Catálogos</div>
+    <div class="nav-item" data-view="agentes"><span class="ico">🤖</span><span>Agentes</span></div>
     <div class="nav-item" data-view="precios"><span class="ico">💲</span><span>Lista de precios</span></div>
     <div class="nav-item" data-view="clientes"><span class="ico">👥</span><span>Clientes</span></div>
 
@@ -878,6 +984,11 @@
 
     <!-- ▸ Vista: WhatsApp Sandbox (default) ─────────────────── -->
     <section class="view active" id="view-sandbox">
+      <div class="agent-bar">
+        <span class="agent-bar-label">Agente activo:</span>
+        <select id="agent-selector" class="agent-select"></select>
+        <span class="agent-meta" id="agent-meta"></span>
+      </div>
       <div class="sandbox-layout">
         <div class="sandbox-main"><div class="feed" id="feed"></div></div>
         <aside class="events-panel">
@@ -897,6 +1008,23 @@
         <input type="text" id="composer-input" placeholder="Escribe un mensaje para probar al AI..." autofocus>
         <span class="hint" id="composer-hint">simulator</span>
         <button id="composer-send">Enviar</button>
+      </div>
+    </section>
+
+    <!-- ▸ Vista: Agentes ────────────────────────────────────── -->
+    <section class="view" id="view-agentes">
+      <div class="editor-scroll">
+        <h2>🤖 Agentes</h2>
+        <div class="subtitle">
+          Cada agente combina un cliente fiscal, una lista de precios y un contador de folios independiente.
+          El operador elige qué agente usar desde el dropdown del WhatsApp Sandbox.
+        </div>
+        <div class="editor-toolbar">
+          <button class="btn secondary" id="agentes-add">+ Nuevo agente</button>
+          <button class="btn" id="agentes-save" disabled>💾 Guardar cambios</button>
+          <span class="save-status saved" id="agentes-status">sin cambios</span>
+        </div>
+        <div id="agentes-content"></div>
       </div>
     </section>
 
@@ -1213,8 +1341,257 @@ document.querySelectorAll('nav.sidebar .nav-item[data-view]').forEach(item => {
     if (v === 'reports') loadReports();
     if (v === 'precios') loadPrecios();
     if (v === 'clientes') loadClientes();
+    if (v === 'agentes') loadAgentes();
     // 'design' es estática (sin fetch)
   });
+});
+
+// ─── Multi-agente: estado global ───────────────────────────────
+let _agentes = [];
+let _agentesOrig = '';
+let _listasArchivos = {};
+let _agenteActivo = localStorage.getItem('frutaskelly.agente_activo') || null;
+
+async function loadAgentesGlobal() {
+  // Carga al arrancar la página para llenar el dropdown del sandbox
+  try {
+    const r = await fetch('/api/agentes');
+    const d = await r.json();
+    _agentes = d.agentes || [];
+    _listasArchivos = d.listas_precios_archivos || {};
+    if (!_agenteActivo && d.agente_default) _agenteActivo = d.agente_default;
+    renderAgentSelector();
+  } catch (e) { console.error('No pude cargar agentes:', e); }
+}
+
+function renderAgentSelector() {
+  const sel = $('agent-selector');
+  if (!sel) return;
+  const activos = _agentes.filter(a => a.activo !== false);
+  if (!activos.length) {
+    sel.innerHTML = '<option value="">— sin agentes —</option>';
+    $('agent-meta').textContent = '';
+    return;
+  }
+  if (!_agenteActivo || !activos.find(a => a.id === _agenteActivo)) {
+    _agenteActivo = activos[0].id;
+    localStorage.setItem('frutaskelly.agente_activo', _agenteActivo);
+  }
+  sel.innerHTML = activos.map(a =>
+    `<option value="${escape(a.id)}" ${a.id === _agenteActivo ? 'selected' : ''}>${escape(a.icono || '🤖')} ${escape(a.nombre)}</option>`
+  ).join('');
+  updateAgentMeta();
+}
+
+function updateAgentMeta() {
+  const a = _agentes.find(x => x.id === _agenteActivo);
+  const el = $('agent-meta');
+  if (!a || !el) { if (el) el.textContent = ''; return; }
+  el.innerHTML = `Cliente: <b>${escape(a.cliente_id)}</b> · Lista: <b>${escape(a.lista_precios_id)}</b> · Tipo: <b>${escape(a.tipo)}</b>`;
+}
+
+document.addEventListener('change', (e) => {
+  if (e.target && e.target.id === 'agent-selector') {
+    _agenteActivo = e.target.value;
+    localStorage.setItem('frutaskelly.agente_activo', _agenteActivo);
+    updateAgentMeta();
+  }
+});
+
+// ─── Vista Agentes (editable) ──────────────────────────────────
+function setAgentesStatus(text, klass) {
+  const el = $('agentes-status');
+  el.textContent = text;
+  el.className = 'save-status ' + (klass || 'saved');
+  $('agentes-save').disabled = (klass !== 'dirty');
+}
+function agentesDirty() {
+  return JSON.stringify(_agentes) !== _agentesOrig;
+}
+function checkAgentesDirty() {
+  if (agentesDirty()) setAgentesStatus('cambios sin guardar', 'dirty');
+  else setAgentesStatus('sin cambios', 'saved');
+}
+
+async function loadAgentes() {
+  const el = $('agentes-content');
+  el.innerHTML = '<div class="empty">Cargando…</div>';
+  try {
+    const r = await fetch('/api/agentes');
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    _agentes = d.agentes || [];
+    _listasArchivos = d.listas_precios_archivos || {};
+    _agentesOrig = JSON.stringify(_agentes);
+    setAgentesStatus('sin cambios', 'saved');
+    renderAgentes();
+    renderAgentSelector();  // sync dropdown del sandbox
+  } catch (e) {
+    el.innerHTML = `<div class="empty">Error: ${escape(e.message)}</div>`;
+  }
+}
+
+async function loadClientesForDropdown() {
+  // Para popular el dropdown de cliente_id en la vista de agentes
+  try {
+    const r = await fetch('/api/clientes');
+    const d = await r.json();
+    return d.clientes || [];
+  } catch (e) { return []; }
+}
+
+let _clientesParaAgentes = [];
+
+async function renderAgentes() {
+  const el = $('agentes-content');
+  if (!_agentes.length) {
+    el.innerHTML = '<div class="empty">No hay agentes. Agrega uno con el botón de arriba.</div>';
+    return;
+  }
+  if (!_clientesParaAgentes.length) {
+    _clientesParaAgentes = await loadClientesForDropdown();
+  }
+  const clienteOptions = _clientesParaAgentes.map(c =>
+    `<option value="${escape(c.id)}">${escape(c.nombre || c.id)} (${escape(c.id)})</option>`
+  ).join('');
+  const tipoOptions = ['hospitales', 'comedores', 'dif', 'otro'].map(t =>
+    `<option value="${t}">${t}</option>`
+  ).join('');
+  const listaOptions = Object.keys(_listasArchivos).map(id =>
+    `<option value="${escape(id)}">${escape(id)} — ${escape(_listasArchivos[id])}</option>`
+  ).join('');
+
+  el.innerHTML = _agentes.map((a, idx) => {
+    const fillSel = (html, value) => html.replace(`value="${escape(value || '')}"`, `value="${escape(value || '')}" selected`);
+    const colorBar = a.color_hex ? `style="border-left-color:${escape(a.color_hex)}"` : '';
+    return `
+    <div class="agente-card" data-idx="${idx}" ${colorBar}>
+      <div class="head">
+        <div class="ico-block">${escape(a.icono || '🤖')}</div>
+        <div class="titles">
+          <h3>${escape(a.nombre || '(sin nombre)')}</h3>
+          <span class="id-tag">${escape(a.id || '')}</span>
+        </div>
+        <div class="estado-toggle">
+          ${_agenteActivo === a.id ? '<span class="badge-default">● activo en sandbox</span>' : ''}
+          <label class="ds-switch" title="Activo / inactivo">
+            <input type="checkbox" data-field="activo" ${a.activo !== false ? 'checked' : ''}>
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+      <div class="grid">
+        <label>ID</label>
+        <input type="text" data-field="id" value="${escape(a.id || '')}">
+        <label>Nombre</label>
+        <input type="text" data-field="nombre" value="${escape(a.nombre || '')}">
+        <label>Descripción</label>
+        <textarea data-field="descripcion" rows="2">${escape(a.descripcion || '')}</textarea>
+        <label>Cliente</label>
+        <select data-field="cliente_id">${fillSel(clienteOptions, a.cliente_id)}</select>
+        <label>Lista de precios</label>
+        <select data-field="lista_precios_id">${fillSel(listaOptions, a.lista_precios_id)}</select>
+        <label>Tipo</label>
+        <select data-field="tipo">${fillSel(tipoOptions, a.tipo)}</select>
+        <label>Folio counter</label>
+        <input type="text" data-field="folio_file" value="${escape(a.folio_file || '')}" placeholder="ej. folio_counter_dif.json">
+        <label>Icono (emoji)</label>
+        <input type="text" data-field="icono" value="${escape(a.icono || '')}" maxlength="3" style="max-width:80px">
+        <label>Color (hex)</label>
+        <input type="text" data-field="color_hex" value="${escape(a.color_hex || '')}" placeholder="#0a84ff" style="max-width:140px">
+        <label>System prompt addendum</label>
+        <textarea data-field="system_prompt_addendum" rows="3" placeholder="Instrucciones extra que se inyectan al system prompt cuando este agente está activo.">${escape(a.system_prompt_addendum || '')}</textarea>
+      </div>
+      <div class="card-actions">
+        ${_agenteActivo === a.id ? '' : `<button class="btn ghost small" data-action="set-default">⭐ Hacer default</button>`}
+        <button class="btn danger small" data-action="del">Eliminar</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Wire inputs
+  el.querySelectorAll('.agente-card').forEach(card => {
+    const idx = parseInt(card.dataset.idx, 10);
+    const orig = JSON.parse(JSON.stringify(_agentes[idx]));
+    card.querySelectorAll('[data-field]').forEach(inp => {
+      const field = inp.dataset.field;
+      const onChange = () => {
+        const value = inp.type === 'checkbox' ? inp.checked : inp.value;
+        _agentes[idx][field] = value;
+        if (String(value) !== String(orig[field] || '')) inp.classList.add('changed');
+        else inp.classList.remove('changed');
+        if (field === 'nombre') {
+          card.querySelector('h3').textContent = inp.value || '(sin nombre)';
+        }
+        if (field === 'icono') {
+          card.querySelector('.ico-block').textContent = inp.value || '🤖';
+        }
+        if (field === 'color_hex' && inp.value) {
+          card.style.borderLeftColor = inp.value;
+        }
+        checkAgentesDirty();
+      };
+      inp.addEventListener('input', onChange);
+      inp.addEventListener('change', onChange);
+    });
+    const btnSetDefault = card.querySelector('[data-action="set-default"]');
+    if (btnSetDefault) {
+      btnSetDefault.addEventListener('click', () => {
+        _agenteActivo = _agentes[idx].id;
+        localStorage.setItem('frutaskelly.agente_activo', _agenteActivo);
+        renderAgentes();
+        renderAgentSelector();
+      });
+    }
+    card.querySelector('[data-action="del"]').addEventListener('click', () => {
+      if (!confirm(`¿Eliminar el agente "${_agentes[idx].nombre}"? Los pedidos ya procesados no se ven afectados.`)) return;
+      _agentes.splice(idx, 1);
+      renderAgentes();
+      checkAgentesDirty();
+    });
+  });
+}
+
+$('agentes-add').addEventListener('click', () => {
+  const id = 'nuevo_' + (_agentes.length + 1);
+  _agentes.push({
+    id: id,
+    nombre: 'Nuevo agente',
+    descripcion: '',
+    cliente_id: _clientesParaAgentes[0]?.id || 'EHMO',
+    lista_precios_id: Object.keys(_listasArchivos)[0] || 'EHMO',
+    folio_file: `folio_counter_${id}.json`,
+    tipo: 'hospitales',
+    icono: '🤖',
+    color_hex: '#0a84ff',
+    activo: true,
+    system_prompt_addendum: '',
+  });
+  renderAgentes();
+  checkAgentesDirty();
+});
+
+$('agentes-save').addEventListener('click', async () => {
+  setAgentesStatus('guardando…', 'saving');
+  try {
+    const r = await fetch('/api/agentes', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        agentes: _agentes,
+        agente_default: _agenteActivo,
+        listas_precios_archivos: _listasArchivos,
+      }),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'error desconocido');
+    _agentesOrig = JSON.stringify(_agentes);
+    setAgentesStatus(`✓ guardado (${d.agentes_guardados} agentes)`, 'saved');
+    renderAgentSelector();
+    setTimeout(() => setAgentesStatus('sin cambios', 'saved'), 3000);
+  } catch (e) {
+    setAgentesStatus(`✗ error: ${e.message}`, 'error');
+  }
 });
 
 // ─── Acciones laterales ────────────────────────────────────────
@@ -1370,6 +1747,7 @@ async function send() {
   const fd = new FormData();
   fd.append('message', text);
   if (file) fd.append('file', file);
+  if (_agenteActivo) fd.append('agent_id', _agenteActivo);
   input.value = '';
   fileInput.value = '';
   attachBtn.classList.remove('has-file');
@@ -1798,6 +2176,7 @@ $('copy-events-text').addEventListener('click', async (e) => {
 });
 
 // ─── Auto-refresh ──────────────────────────────────────────────
+loadAgentesGlobal();   // popula dropdown del sandbox al arrancar
 loadSandbox();
 setInterval(() => {
   if (currentView === 'sandbox') loadSandbox();

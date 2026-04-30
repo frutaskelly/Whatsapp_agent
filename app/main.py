@@ -154,17 +154,25 @@ def create_app():
         # Detectar formato del request
         ctype = request.content_type or ""
         uploaded = None
+        agent_id = None
         if ctype.startswith("multipart/"):
             text = (request.form.get("message") or "").strip()
             phone = request.form.get("phone") or "simulator"
             uploaded = request.files.get("file")
+            agent_id = (request.form.get("agent_id") or "").strip() or None
         else:
             data = request.get_json(silent=True) or {}
             text = (data.get("message") or "").strip()
             phone = data.get("phone") or "simulator"
+            agent_id = (data.get("agent_id") or "").strip() or None
+
+        # Resolver agente activo (default si no se mandó uno)
+        agente_activo = _resolver_agente(agent_id)
 
         log_event("webhook", f"📩 Mensaje del simulador recibido",
-                  {"phone": phone, "has_text": bool(text), "has_file": bool(uploaded and uploaded.filename)})
+                  {"phone": phone, "has_text": bool(text),
+                   "has_file": bool(uploaded and uploaded.filename),
+                   "agent_id": agent_id, "agente": agente_activo.get("nombre") if agente_activo else None})
 
         # Guardar adjunto si vino
         attachment_path = None
@@ -200,6 +208,9 @@ def create_app():
         if drive_info:
             in_meta["drive_link"] = drive_info["link"]
             in_meta["drive_id"] = drive_info["id"]
+        if agente_activo:
+            in_meta["agent_id"] = agente_activo.get("id")
+            in_meta["agente"] = agente_activo.get("nombre")
         message_log.log_message("in", phone, "text", in_body, in_meta)
 
         try:
@@ -211,10 +222,11 @@ def create_app():
             return jsonify({"error": str(e)}), 500
 
         reply = result.get("respuesta_para_ehmo") or "(Claude no devolvió respuesta)"
-        message_log.log_message(
-            "out", phone, "text", reply,
-            {"simulated": True, "intencion": result.get("intencion"), "accion": result.get("accion")},
-        )
+        out_meta = {"simulated": True, "intencion": result.get("intencion"), "accion": result.get("accion")}
+        if agente_activo:
+            out_meta["agent_id"] = agente_activo.get("id")
+            out_meta["agente"] = agente_activo.get("nombre")
+        message_log.log_message("out", phone, "text", reply, out_meta)
 
         # Si Claude pidió procesar el archivo, dispara el pipeline (genera el
         # Excel de salida + sube a Drive + manda mensaje de seguimiento)
@@ -497,6 +509,84 @@ def create_app():
             "items_cargados": n_loaded,
             "backup": backup_path.name,
         })
+
+    # ─── Agentes (multi-agente) ────────────────────────────────────────────
+    def _agentes_path():
+        from pathlib import Path
+        return Path(config.BASE_DIR) / "storage" / "agentes.json"
+
+    def _cargar_agentes_data() -> dict:
+        import json as _json
+        p = _agentes_path()
+        if not p.exists():
+            return {"agentes": [], "agente_default": None, "listas_precios_archivos": {}}
+        try:
+            return _json.loads(p.read_text(encoding="utf-8"))
+        except Exception:
+            return {"agentes": [], "agente_default": None, "listas_precios_archivos": {}}
+
+    def _resolver_agente(agent_id: str | None) -> dict | None:
+        """Devuelve el agente solicitado, o el default si no se especifica.
+        Si tampoco hay default, devuelve None (operación sigue con valores legacy).
+        """
+        data = _cargar_agentes_data()
+        agentes = [a for a in data.get("agentes", []) if a.get("activo") is not False]
+        if agent_id:
+            for a in agentes:
+                if a.get("id") == agent_id:
+                    return a
+        default_id = data.get("agente_default")
+        if default_id:
+            for a in agentes:
+                if a.get("id") == default_id:
+                    return a
+        return agentes[0] if agentes else None
+
+    @app.route("/api/agentes", methods=["GET"])
+    def api_agentes_get():
+        import json as _json
+        p = _agentes_path()
+        if not p.exists():
+            return jsonify({"agentes": [], "agente_default": None})
+        try:
+            data = _json.loads(p.read_text(encoding="utf-8"))
+        except Exception as e:
+            return jsonify({"error": f"agentes.json corrupto: {e}"}), 500
+        return jsonify({
+            "agentes": data.get("agentes", []),
+            "agente_default": data.get("agente_default"),
+            "listas_precios_archivos": data.get("listas_precios_archivos", {}),
+        })
+
+    @app.route("/api/agentes", methods=["POST"])
+    def api_agentes_save():
+        """Guarda el catálogo de agentes."""
+        import json as _json
+        body = request.get_json(silent=True) or {}
+        agentes = body.get("agentes")
+        if agentes is None:
+            return jsonify({"ok": False, "error": "Falta 'agentes' en body"}), 400
+
+        p = _agentes_path()
+        existing = {}
+        if p.exists():
+            try:
+                existing = _json.loads(p.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+
+        new_data = {
+            "_documentacion": existing.get("_documentacion",
+                "Agentes especializados. Editable desde el dashboard."),
+            "agente_default": body.get("agente_default", existing.get("agente_default")),
+            "agentes": agentes,
+            "listas_precios_archivos": body.get("listas_precios_archivos",
+                existing.get("listas_precios_archivos", {})),
+        }
+        p.write_text(_json.dumps(new_data, ensure_ascii=False, indent=2), encoding="utf-8")
+        log_event("system", f"🤖 Agentes actualizados ({len(agentes)} agentes)",
+                  {"agentes": len(agentes), "default": new_data["agente_default"]})
+        return jsonify({"ok": True, "agentes_guardados": len(agentes)})
 
     # ─── Clientes (editables) ──────────────────────────────────────────────
     def _clientes_path():

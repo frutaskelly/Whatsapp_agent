@@ -73,6 +73,7 @@ storage/message_log.jsonl
 #   - data/Lista_Precios_EHMO.xlsx
 #   - storage/keywords.json
 #   - storage/clientes.json
+#   - storage/agentes.json
 #   - storage/folio_counter*.json
 #   - storage/pedidos_dia/*.json
 #   - storage/extras_dia/*.json

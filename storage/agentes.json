@@ -1,0 +1,49 @@
+{
+  "_documentacion": "Agentes especializados. Cada agente combina: cliente fiscal, lista de precios, contador de folios y opcionalmente un addendum del system prompt para personalizar tono/conocimiento. El operador elige qué agente usar desde el dropdown del WhatsApp Sandbox.",
+  "agente_default": "ehmo_hospitales",
+  "agentes": [
+    {
+      "id": "ehmo_hospitales",
+      "nombre": "EHMO Chiapas Hospitales",
+      "descripcion": "Surte Lote 5 (Frutas y Verduras) a 20 hospitales del DIF/IMSS Chiapas. Pedido diario en Excel BD.",
+      "cliente_id": "EHMO",
+      "lista_precios_id": "EHMO",
+      "folio_file": "folio_counter.json",
+      "tipo": "hospitales",
+      "icono": "🏥",
+      "color_hex": "#0a84ff",
+      "activo": true,
+      "system_prompt_addendum": ""
+    },
+    {
+      "id": "surena_comedores",
+      "nombre": "Surena Chiapas Comedores",
+      "descripcion": "Surte a 6 comedores humanitarios (Patria, CCI, 6 de Junio, Shanka, Jobo, Copoya). Pedido en libreta/foto/voz, no Excel.",
+      "cliente_id": "SURENA",
+      "lista_precios_id": "EHMO",
+      "folio_file": "folio_counter_comedores.json",
+      "tipo": "comedores",
+      "icono": "🍲",
+      "color_hex": "#30d158",
+      "activo": true,
+      "system_prompt_addendum": "Atiendes COMEDORES HUMANITARIOS. Pedidos típicos: papas, cebollas, jitomates, cilantro, chile jalapeño, chayotes, zanahorias, melones, sandías, ajo entero, huevos. Cantidades variables. Formato de nota usa 'COMEDORES HUMANITARIOS ENTREGA' en la línea descriptiva."
+    },
+    {
+      "id": "ehmo_dif",
+      "nombre": "EHMO Chiapas DIF",
+      "descripcion": "Variante para pedidos del programa DIF (cliente EHMO con lista de precios diferenciada).",
+      "cliente_id": "EHMO",
+      "lista_precios_id": "EHMO_DIF",
+      "folio_file": "folio_counter_dif.json",
+      "tipo": "dif",
+      "icono": "🎗️",
+      "color_hex": "#bf5af2",
+      "activo": true,
+      "system_prompt_addendum": "Atiendes el programa DIF. La línea descriptiva en notas usa 'DIF ENTREGA'. Lista de precios distinta a hospitales generales."
+    }
+  ],
+  "listas_precios_archivos": {
+    "EHMO": "data/Lista_Precios_EHMO.xlsx",
+    "EHMO_DIF": "data/Lista_Precios_EHMO_DIF.xlsx"
+  }
+}

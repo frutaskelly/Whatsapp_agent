@@ -209,10 +209,14 @@ def resolver_fecha_iso(texto: str, dias_disponibles: list[str] | None = None,
         except ValueError:
             pass
 
-    # "del 28" / "el 27" — solo número, asumir mes/año actual
+    # "del 28" / "el 27" / "del dia 28" / "el día 27" / "dia 28" — solo número,
+    # asumir mes/año actual. Acepta opcionalmente la palabra "día"/"dia".
     if not candidatos:
-        for m in re.finditer(r"\b(?:del?|el)\s+(\d{1,2})\b", t):
-            d = int(m.group(1))
+        for m in re.finditer(
+            r"\b(?:(?:del?|el)\s+)?d[ií]a\s+(\d{1,2})\b|\b(?:del?|el)\s+(\d{1,2})\b",
+            t,
+        ):
+            d = int(m.group(1) or m.group(2))
             try:
                 candidatos.append(datetime(hoy.year, hoy.month, d).strftime("%Y-%m-%d"))
             except ValueError:

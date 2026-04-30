@@ -350,6 +350,46 @@ _MESES_NUMERO = {
 }
 
 
+def fecha_de_filename(filename: str | None) -> str | None:
+    """Extrae fecha ISO YYYY-MM-DD de un nombre de archivo si la contiene.
+
+    Estrategia (en orden de preferencia):
+      1. Fecha con guiones (más semántica): `2026-04-26`. Gana siempre que esté.
+         Cubre: 'WhatsApp Image 2026-04-26 at 1.30 PM.jpeg',
+                'IMG_2026-04-26_143000.jpg', '2026-04-26_pedido.jpeg', etc.
+      2. Fecha compacta YYYYMMDD, ignorando prefijos de timestamp
+         (`YYYYMMDD_HHMMSS_` que son metadata del sistema, no contenido).
+         Cubre: 'IMG_20260426_143000.jpg' → 2026-04-26.
+    Devuelve None si no encuentra una fecha válida.
+    """
+    if not filename:
+        return None
+
+    # 1) Dashes — usa lookbehind/lookahead negativos en lugar de \b para que
+    #    funcione cuando la fecha está rodeada de _ (que es word char).
+    m = re.search(r"(?<!\d)(20\d{2})-(\d{2})-(\d{2})(?!\d)", filename)
+    if m:
+        try:
+            return datetime(int(m.group(1)), int(m.group(2)), int(m.group(3))).date().isoformat()
+        except ValueError:
+            pass
+
+    # 2) Compact YYYYMMDD — ignora si parece prefijo de timestamp del sistema
+    #    (seguido por _HHMMSS Y al INICIO del filename, p.ej. "20260429_165105_...").
+    #    Pero SÍ acepta YYYYMMDD_HHMMSS si viene después de un prefijo (ej.
+    #    "IMG_20260426_143000.jpg" — la fecha del contenido).
+    for m in re.finditer(r"(?<!\d)(20\d{2})(\d{2})(\d{2})(?!\d)", filename):
+        rest = filename[m.end():]
+        looks_like_ts = rest.startswith("_") and len(rest) >= 7 and rest[1:7].isdigit()
+        if looks_like_ts and m.start() == 0:
+            continue  # timestamp del sistema (al inicio del filename)
+        try:
+            return datetime(int(m.group(1)), int(m.group(2)), int(m.group(3))).date().isoformat()
+        except ValueError:
+            continue
+    return None
+
+
 def fecha_a_iso(fecha_str: str | None, year: int | None = None) -> str | None:
     """Convierte '27 de abril' a '2026-04-27' (usa año actual si no se da uno).
 

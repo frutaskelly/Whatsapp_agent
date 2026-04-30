@@ -195,8 +195,29 @@ def create_app():
         # Drive, log "in", AI, log "out", maybe_process. Si vinieron varios
         # archivos juntos, todos comparten el mismo `text` del operador.
         from .drive_uploader import upload_file as drive_upload
-        from .pedido_processor import _extraer_fecha, fecha_a_iso
+        from .pedido_processor import _extraer_fecha, fecha_a_iso, fecha_de_filename
         from .processing_runner import maybe_process
+        from datetime import date as _date, timedelta as _td
+
+        def _hint_fecha_desde_archivo(original_name: str | None) -> str:
+            """Construye un hint para el AI con la fecha visible en el nombre
+            de archivo y la fecha de entrega típica (foto + 1 día)."""
+            if not original_name:
+                return ""
+            partes = [f"[Archivo adjunto: {original_name}]"]
+            f = fecha_de_filename(original_name)
+            if f:
+                try:
+                    d = _date.fromisoformat(f)
+                    sig = (d + _td(days=1)).isoformat()
+                    partes.append(
+                        f"[FECHA EN NOMBRE DE ARCHIVO: {f}. "
+                        f"Si es foto de libreta de pedido, la entrega TÍPICA es al día siguiente: {sig}. "
+                        f"Sugiérela al confirmar con el operador, pero no la asumas como definitiva.]"
+                    )
+                except Exception:
+                    pass
+            return "\n".join(partes)
 
         def _handle_one(uploaded, file_idx: int, total: int) -> dict:
             attachment_path = None
@@ -238,9 +259,17 @@ def create_app():
                 in_meta["batch_total"] = total
             message_log.log_message("in", phone, "text", in_body, in_meta)
 
+            # Si hay adjunto, anteponemos un hint con la fecha del filename
+            # para que el AI la use como sugerencia de fecha de entrega
+            text_para_ai = text or ""
+            if attachment_path and original_name:
+                hint = _hint_fecha_desde_archivo(original_name)
+                if hint:
+                    text_para_ai = (hint + "\n\n" + text_para_ai).strip()
+
             try:
                 result = ai_chat(
-                    phone, text, attachment_path=attachment_path,
+                    phone, text_para_ai, attachment_path=attachment_path,
                     agent_id=(agente_activo or {}).get("id"),
                     agent_addendum=(agente_activo or {}).get("system_prompt_addendum"),
                 )

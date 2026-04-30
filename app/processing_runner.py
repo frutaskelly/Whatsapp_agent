@@ -53,6 +53,12 @@ def maybe_process(phone: str, attachment_path: Path | None, ai_result: dict,
     if accion == "procesar_libreta":
         return _procesar_libreta_desde_ai(phone, ai_result, agente=agente)
 
+    # Caso 0d-bis: registrar pesos reportados por el operador (PASO 2 del flujo
+    # SUREÑA). Reemplaza cantidades en manojos/piezas por kg reales y emite
+    # las notas de remisión.
+    if accion == "registrar_pesos":
+        return _registrar_pesos_desde_ai(phone, ai_result, agente=agente)
+
     # Caso 0e: imprimir una nota específica por folio
     if accion == "imprimir_nota_folio":
         folio = (ai_result.get("datos") or {}).get("folio")
@@ -579,6 +585,91 @@ def _procesar_libreta_desde_ai(phone: str, ai_result: dict,
     message_log.log_message("out", phone, "text", msg, out_meta)
 
     return {"libreta": True, **{k: v for k, v in result.items() if k != "df_fyv"}}
+
+
+def _registrar_pesos_desde_ai(phone: str, ai_result: dict,
+                                agente: dict | None = None) -> dict:
+    """Aplica pesos reportados (texto o foto) al state y emite notas.
+
+    Espera datos:
+      datos.fecha_iso: 'YYYY-MM-DD'  (opcional; si falta usa más reciente con requires_pesos)
+      datos.pesos: [
+        {"destino": "Comedor Patria", "alimento": "Espinacas", "kg": 4.5},
+        ...
+      ]
+    """
+    from .libreta_processor import aplicar_pesos
+    from .estado_pedido import cargar_estado_mas_reciente
+
+    datos = ai_result.get("datos") or {}
+    pesos = datos.get("pesos") or []
+    fecha_iso = (datos.get("fecha_iso") or datos.get("fecha_entrega") or "").strip()
+
+    if not pesos:
+        msg = "⚠️ No identifiqué pesos en tu mensaje. Mándamelos así: 'Patria: espinacas 4kg, sandías 18kg'."
+        message_log.log_message("out", phone, "text", msg, {"pesos_error": "sin pesos"})
+        return {"error": "sin pesos en datos"}
+
+    # Si no vino fecha, usar el día más reciente con requires_pesos
+    if not fecha_iso:
+        state, fecha_reciente = cargar_estado_mas_reciente()
+        if state and state.get("requires_pesos"):
+            fecha_iso = fecha_reciente
+        else:
+            msg = "⚠️ No me dijiste la fecha y no encontré un día reciente esperando pesos. Indícame la fecha."
+            message_log.log_message("out", phone, "text", msg, {"pesos_error": "sin fecha"})
+            return {"error": "sin fecha"}
+
+    cliente = (agente or {}).get("cliente_id", "SURENA")
+
+    try:
+        result = aplicar_pesos(pesos, fecha_iso, cliente=cliente)
+    except Exception as e:
+        log.exception(f"Error en aplicar_pesos: {e}")
+        msg = f"⚠️ Error procesando pesos: {e}"
+        message_log.log_message("out", phone, "text", msg, {"pesos_error": str(e)})
+        return {"error": str(e)}
+
+    if result.get("error"):
+        msg = f"⚠️ {result['error']}"
+        message_log.log_message("out", phone, "text", msg, {"pesos_error": True})
+        return result
+
+    # Mensaje al operador
+    cambios = result.get("cambios") or []
+    no_encontrados = result.get("no_encontrados") or []
+    todos_kg = result.get("todos_kg")
+    lines = [f"⚖️ *Pesos registrados* — {fecha_iso}"]
+    if cambios:
+        # Agrupar por destino para legibilidad
+        por_destino: dict[str, list[str]] = {}
+        for c in cambios:
+            por_destino.setdefault(c["destino"], []).append(
+                f"{c['alimento']} ({c['cantidad_anterior']} {c['presentacion_anterior']} → {c['kg_aplicado']} kg)"
+            )
+        for destino, items in por_destino.items():
+            lines.append(f"   • *{destino}*: {', '.join(items)}")
+    if no_encontrados:
+        lines.append("")
+        lines.append(f"⚠️ No pude identificar: {', '.join(no_encontrados)}")
+    lines.append("")
+    if todos_kg:
+        lines.append(f"💰 *Total del día (regular): ${result['total_dia']:,.2f}*")
+        if result.get("drive_notas"):
+            lines.append(f"📑 Notas de remisión: {result['drive_notas']['link']}")
+        if result.get("drive_relacion"):
+            lines.append(f"📋 Relación de documentos: {result['drive_relacion']['link']}")
+    else:
+        lines.append("⏸️ Aún hay productos en unidades no-kg. Mándame los pesos faltantes para emitir las notas.")
+
+    msg = "\n".join(lines)
+    out_meta = {"pesos": True, "fecha_iso": fecha_iso, "cambios": len(cambios)}
+    if agente:
+        out_meta["agent_id"] = agente.get("id")
+    message_log.log_message("out", phone, "text", msg, out_meta)
+
+    return {"pesos": True, **{k: v for k, v in result.items()
+                                if not isinstance(v, type(message_log))}}
 
 
 def _generar_relacion_handler(phone: str, fecha_iso: str | None = None) -> dict:

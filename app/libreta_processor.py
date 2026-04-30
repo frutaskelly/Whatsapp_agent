@@ -218,3 +218,236 @@ def procesar_pedido_libreta(destinos: list[dict],
         "n_productos_lineas": n_lineas,
         "destinos": sorted(df_fyv["UNIDAD"].unique()),
     }
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# PASO 2 — Aplicar pesos reportados al state y emitir notas de remisión
+# ──────────────────────────────────────────────────────────────────────────
+
+def _resolver_destino_canonico(input_destino: str, hospitales_estado: list[str]) -> str | None:
+    """Match flexible: 'patria' → 'Comedor Patria', etc."""
+    if not input_destino:
+        return None
+    s = str(input_destino).lower().strip()
+    # Match exacto
+    for h in hospitales_estado:
+        if h.lower() == s:
+            return h
+    # Substring directo
+    for h in hospitales_estado:
+        if s in h.lower() or h.lower() in s:
+            return h
+    # Sin la palabra "comedor"
+    s_clean = s.replace("comedor ", "").strip()
+    for h in hospitales_estado:
+        h_clean = h.lower().replace("comedor ", "").strip()
+        if s_clean == h_clean or s_clean in h_clean:
+            return h
+    return None
+
+
+def _resolver_alimento_en_productos(input_alimento: str, productos: list[dict]) -> dict | None:
+    """Encuentra el producto en la lista que coincide con el nombre dado."""
+    if not input_alimento:
+        return None
+    s = str(input_alimento).lower().strip()
+    # Match por substring de palabra significativa (4+ chars)
+    palabras = [w for w in s.split() if len(w) >= 4]
+    if not palabras:
+        palabras = [s]
+    mejor = None
+    mejor_score = 0
+    for p in productos:
+        nombre = (p.get("alimento") or "").lower()
+        score = sum(1 for w in palabras if w in nombre)
+        if score > mejor_score:
+            mejor_score = score
+            mejor = p
+    return mejor if mejor_score >= 1 else None
+
+
+def aplicar_pesos(pesos: list[dict], fecha_iso: str,
+                   cliente: str = "SURENA",
+                   output_dir: Path | None = None) -> dict:
+    """Aplica pesos reportados al state del día y emite notas de remisión.
+
+    pesos = [
+        {"destino": "Comedor Patria", "alimento": "Espinacas", "kg": 4.5},
+        {"destino": "Patria", "alimento": "Sandías", "kg": 18},
+        {"destino": "Comedor CCI", "alimento": "Espinacas", "kg": 5},
+        ...
+    ]
+
+    Para cada peso:
+      - Resuelve destino y producto contra el state actual
+      - Reemplaza cantidad y presentación → kg / Kilo
+      - Recalcula importe usando precio de la lista del cliente
+    Si todos los productos no-kg ahora tienen kg, quita el flag
+    requires_pesos del state. Genera notas de remisión + relación.
+    """
+    from .estado_pedido import (cargar_estado, _state_file, _state_lock,
+                                  estado_a_dataframe)
+    from .nota_remision import generar_notas_remision
+    import json as _json
+
+    output_dir = Path(output_dir) if output_dir else Path(config.PROCESSED_DIR)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    state = cargar_estado(fecha_iso)
+    if not state:
+        return {"error": f"No hay estado para {fecha_iso}"}
+
+    cambios = []
+    no_encontrados = []
+    hospitales_estado = list(state.get("hospitales", {}).keys())
+
+    for peso in pesos or []:
+        destino_input = (peso.get("destino") or "").strip()
+        alimento_input = (peso.get("alimento") or "").strip()
+        try:
+            kg = float(peso.get("kg") or 0)
+        except (TypeError, ValueError):
+            kg = 0
+        if kg <= 0:
+            no_encontrados.append(f"{destino_input}: {alimento_input} (kg inválido)")
+            continue
+
+        destino_resuelto = _resolver_destino_canonico(destino_input, hospitales_estado)
+        if not destino_resuelto:
+            no_encontrados.append(f"{destino_input} (destino no encontrado)")
+            continue
+
+        info = state["hospitales"][destino_resuelto]
+        producto = _resolver_alimento_en_productos(alimento_input, info.get("productos", []))
+        if not producto:
+            no_encontrados.append(f"{destino_resuelto}: {alimento_input}")
+            continue
+
+        # Buscar el precio en la lista del cliente
+        from .pricing import buscar_precio
+        match = buscar_precio(producto["alimento"])
+        precio_unit = float(match["precio"]) if match else 0.0
+
+        cant_anterior = producto.get("cantidad")
+        pres_anterior = producto.get("presentacion")
+        importe_anterior = producto.get("importe", 0)
+
+        producto["cantidad"] = kg
+        producto["presentacion"] = "Kilo"
+        producto["precio_unitario"] = precio_unit
+        producto["importe"] = round(kg * precio_unit, 2)
+        producto["tiene_precio"] = match is not None
+
+        cambios.append({
+            "destino": destino_resuelto,
+            "alimento": producto["alimento"],
+            "cantidad_anterior": cant_anterior,
+            "presentacion_anterior": pres_anterior,
+            "kg_aplicado": kg,
+            "precio_unitario": precio_unit,
+            "importe_nuevo": producto["importe"],
+            "tiene_precio": match is not None,
+        })
+
+    # Recalcular subtotal/total por destino y estado
+    now = datetime.now().isoformat(timespec="seconds")
+    for hospital, info in state["hospitales"].items():
+        productos_activos = [p for p in info["productos"] if p["cantidad"] > 0]
+        info["subtotal"] = round(sum(p["importe"] for p in productos_activos), 2)
+        info["total"] = info["subtotal"]
+        if info.get("estado") in (None, "vigente"):
+            info["estado"] = "modificado"
+            info["estado_actualizado"] = now
+
+    # Verificar si todos los productos quedaron en kg → quitar requires_pesos
+    todos_kg = True
+    for hospital, info in state["hospitales"].items():
+        for p in info["productos"]:
+            if p.get("cantidad", 0) > 0 and (p.get("presentacion") or "").lower() not in ("kilo", "kg"):
+                todos_kg = False
+                break
+        if not todos_kg:
+            break
+    if todos_kg:
+        state.pop("requires_pesos", None)
+
+    state["ultima_modificacion"] = now
+    state.setdefault("ajustes", []).append({
+        "timestamp": now,
+        "tipo": "registrar_pesos",
+        "cambios": cambios,
+        "no_encontrados": no_encontrados,
+    })
+
+    with _state_lock:
+        _state_file(fecha_iso).write_text(
+            _json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    log_event("processor",
+              f"⚖️ Pesos aplicados al {fecha_iso}: {len(cambios)} producto(s) actualizado(s)",
+              {"fecha": fecha_iso, "cambios": len(cambios),
+               "no_encontrados": no_encontrados, "todos_kg": todos_kg})
+
+    # Generar notas de remisión solo si todos los productos están en kg
+    notas_path = None
+    notas_info = None
+    drive_notas = None
+    relacion_path = None
+    drive_relacion = None
+    if todos_kg:
+        df = estado_a_dataframe(state)
+        df = df[df["CANTIDAD"] > 0]
+        fecha_legible = state.get("fecha_legible", fecha_iso)
+        notas_path = output_dir / f"Notas Remisión {fecha_legible} Comedores.pdf"
+        try:
+            folios_existentes = {h: hi.get("folio_remision")
+                                  for h, hi in state["hospitales"].items()
+                                  if hi.get("folio_remision")}
+            notas_info = generar_notas_remision(
+                df, fecha_legible, notas_path,
+                folios_existentes=folios_existentes,
+                cliente=cliente,
+            )
+            # Persistir folios asignados al state
+            for h, folio in (notas_info.get("folios") or {}).items():
+                if h in state["hospitales"]:
+                    state["hospitales"][h]["folio_remision"] = folio
+            with _state_lock:
+                _state_file(fecha_iso).write_text(
+                    _json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception as e:
+            log.exception(f"Error generando notas tras pesos: {e}")
+            log_event("processor", f"⚠️ Notas tras pesos fallaron: {e}", level="warn")
+
+        # Relación de documentos
+        try:
+            from .relacion_documentos import generar_relacion_dia
+            rel = generar_relacion_dia(fecha_iso, fecha_legible=fecha_legible)
+            if rel and not rel.get("error"):
+                relacion_path = rel["output_path"]
+        except Exception as e:
+            log.exception(f"Error relación tras pesos: {e}")
+
+        # Drive
+        try:
+            from .drive_uploader import upload_file as drive_upload
+            if notas_path and notas_path.exists():
+                drive_notas = drive_upload(notas_path, subfolder=fecha_iso)
+            if relacion_path:
+                drive_relacion = drive_upload(relacion_path, subfolder=fecha_iso)
+        except Exception:
+            pass
+
+    return {
+        "ok": True,
+        "fecha_iso": fecha_iso,
+        "cambios": cambios,
+        "no_encontrados": no_encontrados,
+        "todos_kg": todos_kg,
+        "notas_path": notas_path,
+        "drive_notas": drive_notas,
+        "relacion_path": relacion_path,
+        "drive_relacion": drive_relacion,
+        "total_dia": round(sum(h.get("total", 0) for h in state["hospitales"].values()), 2),
+    }
+

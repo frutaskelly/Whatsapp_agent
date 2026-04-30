@@ -355,7 +355,7 @@ Responde SIEMPRE con un JSON válido (sin markdown, sin texto antes/después):
                "reporte_control" | "recargar_precios" |
                "pregunta" | "saludo" | "otro",
   "respuesta_para_ehmo": "<texto que se enviará por WhatsApp>",
-  "accion": "procesar_archivo" | "procesar_libreta" |
+  "accion": "procesar_archivo" | "procesar_libreta" | "registrar_pesos" |
             "aplicar_modificacion" | "aplicar_extra" | "aplicar_ajuste" |
             "consolidar_notas" | "generar_relacion" |
             "imprimir_nota_folio" |

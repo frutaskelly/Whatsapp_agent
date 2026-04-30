@@ -1159,7 +1159,7 @@
       </div>
       <div class="composer">
         <button class="attach-btn" id="composer-attach" type="button" title="Adjuntar imagen, PDF o Excel">📎</button>
-        <input type="file" id="composer-file" accept=".jpg,.jpeg,.png,.webp,.pdf,.xlsx,.xls" style="display:none">
+        <input type="file" id="composer-file" accept=".jpg,.jpeg,.png,.webp,.pdf,.xlsx,.xls" multiple style="display:none">
         <input type="text" id="composer-input" placeholder="Escribe un mensaje para probar al AI..." autofocus>
         <span class="hint" id="composer-hint">simulator</span>
         <button id="composer-send">Enviar</button>
@@ -1910,19 +1910,23 @@ async function send() {
   const hint = $('composer-hint');
   const btn = $('composer-send');
   const text = input.value.trim();
-  const file = fileInput.files[0];
-  if (!text && !file) return;
+  const files = Array.from(fileInput.files || []);
+  if (!text && !files.length) return;
   btn.disabled = true;
   const oldLabel = btn.textContent;
-  btn.textContent = 'Pensando...';
+  btn.textContent = files.length > 1 ? `Procesando ${files.length} archivos…` : 'Pensando…';
+
   const fd = new FormData();
   fd.append('message', text);
-  if (file) fd.append('file', file);
+  // Append all files con el mismo name="file" → Flask los recibe con getlist("file")
+  for (const f of files) fd.append('file', f, f.name);
   if (_agenteActivo) fd.append('agent_id', _agenteActivo);
+
   input.value = '';
   fileInput.value = '';
   attachBtn.classList.remove('has-file');
   hint.textContent = 'simulator';
+
   try {
     const r = await fetch('/api/simulate', { method: 'POST', body: fd });
     if (!r.ok) console.error('simulate error', await r.text());
@@ -1936,11 +1940,20 @@ async function send() {
 }
 $('composer-attach').addEventListener('click', () => $('composer-file').click());
 $('composer-file').addEventListener('change', (e) => {
-  const f = e.target.files[0];
+  const files = Array.from(e.target.files || []);
   const attachBtn = $('composer-attach');
   const hint = $('composer-hint');
-  if (f) { attachBtn.classList.add('has-file'); hint.textContent = '📎 ' + f.name; }
-  else   { attachBtn.classList.remove('has-file'); hint.textContent = 'simulator'; }
+  if (files.length === 0) {
+    attachBtn.classList.remove('has-file');
+    hint.textContent = 'simulator';
+  } else if (files.length === 1) {
+    attachBtn.classList.add('has-file');
+    hint.textContent = '📎 ' + files[0].name;
+  } else {
+    attachBtn.classList.add('has-file');
+    hint.textContent = `📎 ${files.length} archivos`;
+    hint.title = files.map(f => f.name).join('\n');
+  }
 });
 $('composer-send').addEventListener('click', send);
 $('composer-input').addEventListener('keydown', (e) => {

@@ -163,12 +163,12 @@ def create_app():
 
         # Detectar formato del request
         ctype = request.content_type or ""
-        uploaded = None
+        uploaded_list = []
         agent_id = None
         if ctype.startswith("multipart/"):
             text = (request.form.get("message") or "").strip()
             phone = request.form.get("phone") or "simulator"
-            uploaded = request.files.get("file")
+            uploaded_list = [f for f in request.files.getlist("file") if f and f.filename]
             agent_id = (request.form.get("agent_id") or "").strip() or None
         else:
             data = request.get_json(silent=True) or {}
@@ -179,81 +179,119 @@ def create_app():
         # Resolver agente activo (default si no se mandó uno)
         agente_activo = _resolver_agente(agent_id)
 
-        log_event("webhook", f"📩 Mensaje del simulador recibido",
+        log_event("webhook",
+                  f"📩 Mensaje del simulador recibido"
+                  + (f" ({len(uploaded_list)} archivos)" if len(uploaded_list) > 1 else ""),
                   {"phone": phone, "has_text": bool(text),
-                   "has_file": bool(uploaded and uploaded.filename),
-                   "agent_id": agent_id, "agente": agente_activo.get("nombre") if agente_activo else None})
+                   "n_files": len(uploaded_list),
+                   "agent_id": agent_id,
+                   "agente": agente_activo.get("nombre") if agente_activo else None})
 
-        # Guardar adjunto si vino
-        attachment_path = None
-        original_name = None
-        if uploaded and uploaded.filename:
-            original_name = uploaded.filename
-            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-            safe = secure_filename(uploaded.filename) or "archivo"
-            attachment_path = config.INBOX_DIR / f"{ts}_{phone}_{safe}"
-            uploaded.save(attachment_path)
-            log_event("storage", f"💾 Archivo guardado: {original_name}",
-                      {"path": attachment_path.name, "size_kb": attachment_path.stat().st_size // 1024})
-
-        if not text and not attachment_path:
+        if not text and not uploaded_list:
             return jsonify({"error": "se requiere message o file"}), 400
 
-        # Subir a Drive (si está configurado) — agrupado por fecha del pedido
-        drive_info = None
-        if attachment_path:
-            from .drive_uploader import upload_file as drive_upload
-            from .pedido_processor import _extraer_fecha, fecha_a_iso
-            fecha_iso = fecha_a_iso(_extraer_fecha(original_name or "")) if original_name else None
-            drive_info = drive_upload(attachment_path, original_name=original_name,
-                                       subfolder=fecha_iso)
-
-        # Log incoming
-        in_body = text or ""
-        in_meta = {"simulated": True}
-        if attachment_path:
-            label = f"[adjunto: {attachment_path.name}]"
-            in_body = f"{in_body}\n{label}".strip()
-            in_meta["attachment"] = attachment_path.name
-        if drive_info:
-            in_meta["drive_link"] = drive_info["link"]
-            in_meta["drive_id"] = drive_info["id"]
-        if agente_activo:
-            in_meta["agent_id"] = agente_activo.get("id")
-            in_meta["agente"] = agente_activo.get("nombre")
-        message_log.log_message("in", phone, "text", in_body, in_meta)
-
-        try:
-            result = ai_chat(
-                phone, text, attachment_path=attachment_path,
-                agent_id=(agente_activo or {}).get("id"),
-                agent_addendum=(agente_activo or {}).get("system_prompt_addendum"),
-            )
-        except Exception as e:
-            log.exception(f"Error en /api/simulate: {e}")
-            err = f"Error: {e}"
-            message_log.log_message("out", phone, "text", err, {"simulated": True, "error": True})
-            return jsonify({"error": str(e)}), 500
-
-        reply = result.get("respuesta_para_ehmo") or "(Claude no devolvió respuesta)"
-        out_meta = {"simulated": True, "intencion": result.get("intencion"), "accion": result.get("accion")}
-        if agente_activo:
-            out_meta["agent_id"] = agente_activo.get("id")
-            out_meta["agente"] = agente_activo.get("nombre")
-        message_log.log_message("out", phone, "text", reply, out_meta)
-
-        # Si Claude pidió procesar el archivo, dispara el pipeline (genera el
-        # Excel de salida + sube a Drive + manda mensaje de seguimiento)
+        # ─── Procesar cada archivo (o solo texto si no hay archivos) ────────
+        # Cada archivo se trata como un mensaje individual: se guarda, sube a
+        # Drive, log "in", AI, log "out", maybe_process. Si vinieron varios
+        # archivos juntos, todos comparten el mismo `text` del operador.
+        from .drive_uploader import upload_file as drive_upload
+        from .pedido_processor import _extraer_fecha, fecha_a_iso
         from .processing_runner import maybe_process
-        processed = maybe_process(phone, attachment_path, result,
-                                   original_filename=original_name)
 
+        def _handle_one(uploaded, file_idx: int, total: int) -> dict:
+            attachment_path = None
+            original_name = None
+            drive_info = None
+            if uploaded and uploaded.filename:
+                original_name = uploaded.filename
+                ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+                safe = secure_filename(uploaded.filename) or "archivo"
+                attachment_path = config.INBOX_DIR / f"{ts}_{phone}_{safe}"
+                uploaded.save(attachment_path)
+                log_event("storage",
+                          f"💾 Archivo guardado: {original_name}"
+                          + (f" ({file_idx}/{total})" if total > 1 else ""),
+                          {"path": attachment_path.name,
+                           "size_kb": attachment_path.stat().st_size // 1024,
+                           "agent_id": agent_id})
+                fecha_iso = fecha_a_iso(_extraer_fecha(original_name or ""))
+                drive_info = drive_upload(attachment_path, original_name=original_name,
+                                           subfolder=fecha_iso)
+
+            # Log incoming (este archivo)
+            in_body = text or ""
+            in_meta = {"simulated": True}
+            if attachment_path:
+                lab = f"[adjunto: {attachment_path.name}]"
+                if total > 1:
+                    lab = f"[adjunto {file_idx}/{total}: {attachment_path.name}]"
+                in_body = f"{in_body}\n{lab}".strip()
+                in_meta["attachment"] = attachment_path.name
+            if drive_info:
+                in_meta["drive_link"] = drive_info["link"]
+                in_meta["drive_id"] = drive_info["id"]
+            if agente_activo:
+                in_meta["agent_id"] = agente_activo.get("id")
+                in_meta["agente"] = agente_activo.get("nombre")
+            if total > 1:
+                in_meta["batch_index"] = file_idx
+                in_meta["batch_total"] = total
+            message_log.log_message("in", phone, "text", in_body, in_meta)
+
+            try:
+                result = ai_chat(
+                    phone, text, attachment_path=attachment_path,
+                    agent_id=(agente_activo or {}).get("id"),
+                    agent_addendum=(agente_activo or {}).get("system_prompt_addendum"),
+                )
+            except Exception as e:
+                log.exception(f"Error en /api/simulate (archivo {file_idx}): {e}")
+                err = f"Error: {e}"
+                message_log.log_message("out", phone, "text", err,
+                                          {"simulated": True, "error": True,
+                                           "agent_id": (agente_activo or {}).get("id")})
+                return {"error": str(e), "file": original_name}
+
+            reply = result.get("respuesta_para_ehmo") or "(Claude no devolvió respuesta)"
+            out_meta = {"simulated": True,
+                        "intencion": result.get("intencion"),
+                        "accion": result.get("accion")}
+            if agente_activo:
+                out_meta["agent_id"] = agente_activo.get("id")
+                out_meta["agente"] = agente_activo.get("nombre")
+            if total > 1:
+                out_meta["batch_index"] = file_idx
+                out_meta["batch_total"] = total
+            message_log.log_message("out", phone, "text", reply, out_meta)
+
+            processed = maybe_process(phone, attachment_path, result,
+                                        original_filename=original_name)
+            return {
+                "file": original_name,
+                "reply": reply,
+                "intencion": result.get("intencion"),
+                "accion": result.get("accion"),
+                "datos": result.get("datos"),
+                "processed": processed,
+            }
+
+        if not uploaded_list:
+            # Solo texto, sin archivos — comportamiento original
+            return jsonify(_handle_one(None, 1, 1))
+
+        # Múltiples archivos: secuencial, devuelve array de resultados
+        total = len(uploaded_list)
+        if total > 1:
+            log_event("webhook",
+                      f"📦 Procesando {total} archivos en lote",
+                      {"agent_id": agent_id, "phone": phone})
+        results = []
+        for i, up in enumerate(uploaded_list, 1):
+            results.append(_handle_one(up, i, total))
         return jsonify({
-            "reply": reply,
-            "intencion": result.get("intencion"),
-            "accion": result.get("accion"),
-            "datos": result.get("datos"),
-            "processed": processed,
+            "batch": True,
+            "total": total,
+            "results": results,
         })
 
     @app.route("/health")

@@ -26,6 +26,9 @@ def maybe_process(phone: str, attachment_path: Path | None, ai_result: dict,
     Loguea automáticamente un mensaje "out" para que el dashboard lo refleje.
     """
     accion = ai_result.get("accion")
+    # fecha_iso es opcional. Si Claude la extrajo del mensaje ("del 27", "ayer"),
+    # los handlers de consulta operan sobre ESE día en lugar del más reciente.
+    fecha_iso_pedida = (ai_result.get("datos") or {}).get("fecha_iso") or None
 
     # IMPORTANTE: solo disparamos el handler cuando 'accion' es explícita.
     # Si Claude detectó la intención pero falta info y está pidiendo aclaración,
@@ -37,16 +40,16 @@ def maybe_process(phone: str, attachment_path: Path | None, ai_result: dict,
 
     # Caso 0b: consolidar notas vigentes en un solo PDF
     if accion == "consolidar_notas":
-        return _consolidar_notas(phone)
+        return _consolidar_notas(phone, fecha_iso=fecha_iso_pedida)
 
     # Caso 0c: generar/regenerar la relación de documentos del día
     if accion == "generar_relacion":
-        return _generar_relacion_handler(phone)
+        return _generar_relacion_handler(phone, fecha_iso=fecha_iso_pedida)
 
     # Caso 0d: imprimir una nota específica por folio
     if accion == "imprimir_nota_folio":
         folio = (ai_result.get("datos") or {}).get("folio")
-        return _imprimir_nota_folio(phone, folio)
+        return _imprimir_nota_folio(phone, folio, fecha_iso=fecha_iso_pedida)
 
     # Caso 0e–h: control de documentos (estados de folios)
     if accion == "aceptar_folio":
@@ -419,14 +422,20 @@ def _aplicar_extras_desde_ai(phone: str, ai_result: dict) -> dict:
             "regen": regen}
 
 
-def _generar_relacion_handler(phone: str) -> dict:
-    """Genera Excel + PDF de la Relación de Documentos del día más reciente."""
-    from .estado_pedido import cargar_estado_mas_reciente
+def _generar_relacion_handler(phone: str, fecha_iso: str | None = None) -> dict:
+    """Genera Excel + PDF de la Relación de Documentos.
+
+    Si fecha_iso se pasa, opera sobre ESE día. Sino, sobre el más reciente.
+    """
+    from .estado_pedido import cargar_estado, cargar_estado_mas_reciente
     from .relacion_documentos import generar_relacion_dia, generar_relacion_dia_pdf
     from datetime import datetime
     from . import config
 
-    state, fecha_iso = cargar_estado_mas_reciente()
+    if fecha_iso:
+        state = cargar_estado(fecha_iso)
+    else:
+        state, fecha_iso = cargar_estado_mas_reciente()
     if not state:
         msg = "⚠️ No hay pedido del día procesado. Procesa el Excel primero."
         message_log.log_message("out", phone, "text", msg, {"relacion": False})
@@ -551,13 +560,14 @@ def _reporte_control(phone: str) -> dict:
     return {"reporte_control": True, "grupos": grupos}
 
 
-def _imprimir_nota_folio(phone: str, folio_input: str | None) -> dict:
+def _imprimir_nota_folio(phone: str, folio_input: str | None,
+                          fecha_iso: str | None = None) -> dict:
     """Genera el PDF de UNA nota específica por su folio.
 
     Si el folio es de un hospital → regenera nota corregida individual.
     Si el folio es del ALMACÉN EHMO (extras) → regenera la nota EXTRAS.
     """
-    from .estado_pedido import cargar_estado_mas_reciente, estado_a_dataframe
+    from .estado_pedido import cargar_estado, cargar_estado_mas_reciente, estado_a_dataframe
     from .extras_pedido import cargar_extras, regenerar_archivos_extras
     from .nota_remision import generar_notas_remision
     from datetime import datetime
@@ -577,7 +587,10 @@ def _imprimir_nota_folio(phone: str, folio_input: str | None) -> dict:
         message_log.log_message("out", phone, "text", msg, {"imprimir_folio": False})
         return {"error": "folio inválido"}
 
-    state, fecha_iso = cargar_estado_mas_reciente()
+    if fecha_iso:
+        state = cargar_estado(fecha_iso)
+    else:
+        state, fecha_iso = cargar_estado_mas_reciente()
     if not state:
         msg = "⚠️ No hay pedido del día procesado."
         message_log.log_message("out", phone, "text", msg, {"imprimir_folio": False})
@@ -665,19 +678,21 @@ def _recargar_precios(phone: str) -> dict:
     return {"reload_prices": True, "count": len(items)}
 
 
-def _consolidar_notas(phone: str) -> dict:
-    """Genera un PDF único con TODAS las notas vigentes del día (estado actual).
+def _consolidar_notas(phone: str, fecha_iso: str | None = None) -> dict:
+    """Genera un PDF único con TODAS las notas vigentes (estado actual).
 
+    Si fecha_iso se pasa, opera sobre ESE día. Sino, sobre el más reciente.
     Útil para imprimir todas las notas finales después de modificaciones/ajustes.
-    Lee el estado del día más reciente, regenera notas con folios existentes,
-    sube a Drive en la subcarpeta del día.
     """
-    from .estado_pedido import cargar_estado_mas_reciente, estado_a_dataframe
+    from .estado_pedido import cargar_estado, cargar_estado_mas_reciente, estado_a_dataframe
     from .nota_remision import generar_notas_remision
     from datetime import datetime
     from . import config
 
-    state, fecha_iso = cargar_estado_mas_reciente()
+    if fecha_iso:
+        state = cargar_estado(fecha_iso)
+    else:
+        state, fecha_iso = cargar_estado_mas_reciente()
     if not state:
         msg = "⚠️ No hay pedido del día procesado, no puedo consolidar notas."
         message_log.log_message("out", phone, "text", msg, {"consolidar": False})

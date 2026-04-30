@@ -382,7 +382,8 @@ def fecha_a_iso(fecha_str: str | None, year: int | None = None) -> str | None:
 
 def procesar_pedido(input_excel: Path, output_dir: Path,
                     original_filename: str | None = None,
-                    force_overwrite: bool = False) -> dict | None:
+                    force_overwrite: bool = False,
+                    agente: dict | None = None) -> dict | None:
     """Procesa un Excel EHMO con hoja BD.
 
     Si ya existe un JSON de estado para el día detectado y `force_overwrite`
@@ -711,16 +712,31 @@ def procesar_pedido(input_excel: Path, output_dir: Path,
         log_event("processor", f"⚠️ Lista de compras Excel falló: {e}", level="warn")
         lista_compras_xlsx_path = None
 
+    # ─── Detectar si el agente requiere pesos antes de emitir nota ──────────
+    # SUREÑA Comedores: el pedido viene en manojos/piezas, el cobro real es por
+    # kg pesados al surtir. En ese caso solo generamos los documentos de surtido
+    # (pedido pdf/xlsx + lista de compras) y ESPERAMOS los pesos para emitir
+    # notas y relación.
+    requires_pesos = bool((agente or {}).get("requires_pesos"))
+
     # ─── Notas de remisión con precios (una por hospital) ────────────────────
-    from .nota_remision import generar_notas_remision
-    notas_path = output_dir / f"Notas Remisión {fecha_str} Frutas y verduras.pdf"
+    notas_path = None
     notas_info = None
-    try:
-        notas_info = generar_notas_remision(df_fyv, fecha_str, notas_path)
-    except Exception as e:
-        log.exception(f"Error generando notas de remisión: {e}")
-        log_event("processor", f"⚠️ Notas remisión fallaron: {e}", level="warn")
-        notas_path = None
+    if requires_pesos:
+        log_event("processor",
+                  f"⏸️ Agente '{(agente or {}).get('id')}' requiere pesos — "
+                  f"se omite la nota de remisión. Documentos de surtido listos.",
+                  {"agent_id": (agente or {}).get("id")},
+                  level="info")
+    else:
+        from .nota_remision import generar_notas_remision
+        notas_path = output_dir / f"Notas Remisión {fecha_str} Frutas y verduras.pdf"
+        try:
+            notas_info = generar_notas_remision(df_fyv, fecha_str, notas_path)
+        except Exception as e:
+            log.exception(f"Error generando notas de remisión: {e}")
+            log_event("processor", f"⚠️ Notas remisión fallaron: {e}", level="warn")
+            notas_path = None
 
     # ─── Persistir estado del día (para ajustes posteriores) ─────────────────
     from .estado_pedido import guardar_estado
@@ -728,14 +744,18 @@ def procesar_pedido(input_excel: Path, output_dir: Path,
     if fecha_iso_calc:
         try:
             folios_iniciales = (notas_info or {}).get("folios", {})
-            guardar_estado(fecha_iso_calc, fecha_str, df_fyv, folios=folios_iniciales)
+            estado_extra = {"requires_pesos": True} if requires_pesos else None
+            guardar_estado(fecha_iso_calc, fecha_str, df_fyv,
+                            folios=folios_iniciales, extra=estado_extra)
         except Exception as e:
             log.exception(f"Error guardando estado del día: {e}")
 
     # ─── Relación de documentos del día (Excel + PDF horizontal) ────────────
+    # Solo si NO estamos en modo pesos pendientes (la relación incluye totales
+    # con precios; sin precios no tiene sentido generarla todavía).
     relacion_path = None
     relacion_pdf_path = None
-    if fecha_iso_calc:
+    if fecha_iso_calc and not requires_pesos:
         try:
             from .relacion_documentos import generar_relacion_dia, generar_relacion_dia_pdf
             rel = generar_relacion_dia(fecha_iso_calc, fecha_legible=fecha_str)

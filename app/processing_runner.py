@@ -16,7 +16,8 @@ log = logging.getLogger(__name__)
 
 
 def maybe_process(phone: str, attachment_path: Path | None, ai_result: dict,
-                  original_filename: str | None = None) -> dict | None:
+                  original_filename: str | None = None,
+                  agente: dict | None = None) -> dict | None:
     """Disparador post-AI: ejecuta el pipeline correcto según la acción.
 
     - accion=procesar_archivo: corre el procesador de pedidos completo.
@@ -92,7 +93,8 @@ def maybe_process(phone: str, attachment_path: Path | None, ai_result: dict,
     try:
         result = procesar_pedido(attachment_path, config.PROCESSED_DIR,
                                   original_filename=original_filename,
-                                  force_overwrite=force_overwrite)
+                                  force_overwrite=force_overwrite,
+                                  agente=agente)
     except Exception as e:
         log.exception(f"Error procesando pedido: {e}")
         msg = f"⚠️ No pude procesar el pedido: {e}"

@@ -265,7 +265,8 @@ def create_app():
             message_log.log_message("out", phone, "text", reply, out_meta)
 
             processed = maybe_process(phone, attachment_path, result,
-                                        original_filename=original_name)
+                                        original_filename=original_name,
+                                        agente=agente_activo)
             return {
                 "file": original_name,
                 "reply": reply,

@@ -55,11 +55,14 @@ def _state_file(fecha_iso: str) -> Path:
 
 
 def guardar_estado(fecha_iso: str, fecha_legible: str, df_fyv: pd.DataFrame,
-                    folios: dict[str, str] | None = None) -> Path:
+                    folios: dict[str, str] | None = None,
+                    extra: dict | None = None) -> Path:
     """Construye y guarda el estado del día desde df_fyv (procesado).
 
     Para cada hospital, calcula importe usando la lista de precios.
     `folios` opcional: mapping hospital→folio para registrar en el estado.
+    `extra` opcional: dict con campos adicionales (ej. requires_pesos=True
+    para indicar que faltan los pesos antes de poder emitir nota fiscal).
     """
     folios = folios or {}
     now = datetime.now().isoformat(timespec="seconds")
@@ -103,6 +106,8 @@ def guardar_estado(fecha_iso: str, fecha_legible: str, df_fyv: pd.DataFrame,
         "hospitales": hospitales,
         "ajustes": [],
     }
+    if extra:
+        state.update(extra)
 
     path = _state_file(fecha_iso)
     with _state_lock:

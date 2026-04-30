@@ -436,8 +436,14 @@ oficial automáticamente.
 
 
 def interpret_message(text: str | None = None, attachment_path: Path | None = None,
-                      conversation_history: list = None) -> dict:
-    """Manda el mensaje a Claude y devuelve la decisión estructurada."""
+                      conversation_history: list = None,
+                      system_prompt_extra: str | None = None) -> dict:
+    """Manda el mensaje a Claude y devuelve la decisión estructurada.
+
+    `system_prompt_extra` se concatena al SYSTEM_PROMPT base — útil para
+    que cada agente (EHMO Hospitales, Surena Comedores, EHMO DIF…)
+    inyecte conocimiento específico al system prompt sin tocar la base.
+    """
     if not client:
         log.error("ANTHROPIC_API_KEY no configurada")
         return {
@@ -462,14 +468,27 @@ def interpret_message(text: str | None = None, attachment_path: Path | None = No
     messages = conversation_history or []
     messages.append({"role": "user", "content": content})
 
+    # Concatenar addendum del agente al system prompt si vino
+    effective_system = SYSTEM_PROMPT
+    if system_prompt_extra and system_prompt_extra.strip():
+        effective_system = (
+            SYSTEM_PROMPT
+            + "\n\n═══════════════════════════════════════════════════════════════════════════\n"
+            + "ADDENDUM DEL AGENTE ACTIVO (anula reglas generales si entra en conflicto)\n"
+            + "═══════════════════════════════════════════════════════════════════════════\n"
+            + system_prompt_extra.strip()
+        )
+
     log_event("ai", f"🤖 Llamando a Claude ({config.CLAUDE_MODEL})",
-              {"input_chars": sum(len(str(b)) for b in content), "history_turns": len(messages) - 1})
+              {"input_chars": sum(len(str(b)) for b in content),
+               "history_turns": len(messages) - 1,
+               "system_extra_chars": len(system_prompt_extra) if system_prompt_extra else 0})
     t0 = time.time()
     try:
         resp = client.messages.create(
             model=config.CLAUDE_MODEL,
             max_tokens=8192,
-            system=SYSTEM_PROMPT,
+            system=effective_system,
             messages=messages,
         )
         raw = resp.content[0].text
@@ -589,6 +608,7 @@ def chat(phone: str, text: str, attachment_path: Path | None = None,
         text=text_para_ai,
         attachment_path=attachment_path,
         conversation_history=list(history),
+        system_prompt_extra=agent_addendum,
     )
     reply = result.get("respuesta_para_ehmo", "") or ""
 

@@ -73,6 +73,8 @@ _PRESENTACIONES_OVERRIDE = {
     "mermelada": "CAJA",
     "polvo para hornear": "PZ",
     "palanqueta": "PAQUETE",
+    "oregano": "PAQUETE",
+    "orégano": "PAQUETE",
 }
 
 

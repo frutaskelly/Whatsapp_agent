@@ -540,26 +540,77 @@
     color: var(--text-1); font-weight: 600;
     font-variant-numeric: tabular-nums;
   }
-  .day-card .files {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: var(--space-2);
-  }
-  .day-card .file-link {
-    display: flex; align-items: center; gap: var(--space-2);
-    padding: var(--space-2) var(--space-3);
+  /* Disclosure (dropdown) de archivos por día */
+  .day-card details.files-disclosure {
     background: var(--bg-2);
-    border-radius: var(--radius-md);
-    color: var(--text-1); text-decoration: none;
-    font-size: var(--fs-footnote);
     border: 0.5px solid var(--separator-soft);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    margin-top: var(--space-2);
+  }
+  .day-card details.files-disclosure > summary {
+    padding: var(--space-2) var(--space-3);
+    cursor: pointer; user-select: none;
+    list-style: none;
+    display: flex; align-items: center; gap: var(--space-2);
+    font-size: var(--fs-footnote); color: var(--text-1);
     transition: background var(--t-fast) var(--ease);
   }
-  .day-card .file-link:hover { background: var(--bg-3); }
-  .day-card .file-link .file-ico { font-size: 16px; flex-shrink: 0; }
-  .day-card .file-link .file-name {
-    flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  .day-card details.files-disclosure > summary::-webkit-details-marker { display: none; }
+  .day-card details.files-disclosure > summary:hover { background: var(--bg-3); }
+  .day-card details.files-disclosure > summary::before {
+    content: '▸';
+    font-size: 10px; color: var(--text-2);
+    transition: transform var(--t-fast) var(--ease);
+    width: 12px; flex-shrink: 0;
   }
-  .day-card .file-link .size { color: var(--text-3); font-size: var(--fs-caption); flex-shrink: 0; }
+  .day-card details.files-disclosure[open] > summary::before { transform: rotate(90deg); }
+  .day-card details.files-disclosure > summary b { font-weight: 600; }
+  .day-card details.files-disclosure .summary-meta {
+    margin-left: auto; color: var(--text-2); font-size: var(--fs-caption);
+  }
+  /* Tabla de archivos */
+  .files-table {
+    width: 100%; border-collapse: collapse;
+    background: var(--bg-1);
+    font-size: var(--fs-footnote);
+  }
+  .files-table th {
+    background: var(--bg-2); color: var(--text-2);
+    text-align: left;
+    padding: var(--space-2) var(--space-3);
+    font-weight: 600; font-size: var(--fs-caption);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    border-top: 0.5px solid var(--separator-soft);
+    border-bottom: 0.5px solid var(--separator-soft);
+    cursor: pointer; user-select: none;
+  }
+  .files-table th:hover { color: var(--text-1); }
+  .files-table th .arrow { color: var(--accent); margin-left: 4px; font-size: 10px; }
+  .files-table td {
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 0.5px solid var(--separator-soft);
+    color: var(--text-1);
+    vertical-align: middle;
+  }
+  .files-table tr:last-child td { border-bottom: none; }
+  .files-table tr:hover td { background: var(--bg-hover); }
+  .files-table .file-ico {
+    font-size: 16px; line-height: 1;
+    width: 24px; display: inline-block; text-align: center;
+    margin-right: var(--space-1);
+  }
+  .files-table .file-name {
+    color: var(--text-1); text-decoration: none;
+  }
+  .files-table .file-name:hover { color: var(--accent); text-decoration: underline; }
+  .files-table .col-fecha,
+  .files-table .col-size {
+    color: var(--text-2); font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .files-table .col-size { text-align: right; width: 80px; }
+  .files-table .col-fecha { width: 180px; }
   .day-card .actions { margin-top: var(--space-3); }
   .day-card .actions a {
     display: inline-block;
@@ -1905,6 +1956,52 @@ const FILE_ICONS = {
   extras: '🎁',
   otro: '📄',
 };
+// Estado de sort por día (cada day-card recuerda su orden)
+const _filesSortState = {};  // { fecha_iso: {key: 'modified'|'name'|'size_kb', dir: -1|1} }
+
+function fmtFileDate(unixTs) {
+  if (!unixTs) return '—';
+  const d = new Date(unixTs * 1000);
+  return d.toLocaleString('es-MX', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+}
+
+function renderFilesTable(fechaIso, archivos) {
+  if (!archivos.length) {
+    return '<div style="padding:var(--space-3);color:var(--text-3);font-size:var(--fs-footnote)">Sin archivos generados aún.</div>';
+  }
+  const state = _filesSortState[fechaIso] || {key: 'modified', dir: -1};
+  const sorted = archivos.slice().sort((a, b) => {
+    const va = a[state.key], vb = b[state.key];
+    if (typeof va === 'number') return (va - vb) * state.dir;
+    return String(va || '').localeCompare(String(vb || '')) * state.dir;
+  });
+  const arrow = (k) => k === state.key ? `<span class="arrow">${state.dir === -1 ? '↓' : '↑'}</span>` : '';
+  const rows = sorted.map(f => `
+    <tr>
+      <td>
+        <span class="file-ico tipo-${escape(f.tipo)}">${FILE_ICONS[f.tipo] || '📄'}</span>
+        <a class="file-name" href="${escape(f.url)}" target="_blank" rel="noopener" title="${escape(f.name)}">${escape(f.name)}</a>
+      </td>
+      <td class="col-fecha">${escape(fmtFileDate(f.modified))}</td>
+      <td class="col-size">${f.size_kb} KB</td>
+    </tr>
+  `).join('');
+  return `
+    <table class="files-table" data-fecha="${escape(fechaIso)}">
+      <thead>
+        <tr>
+          <th data-sort="name">Nombre del archivo${arrow('name')}</th>
+          <th data-sort="modified" class="col-fecha">Fecha creado${arrow('modified')}</th>
+          <th data-sort="size_kb" class="col-size">Tamaño${arrow('size_kb')}</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
 async function loadDashboard() {
   const el = $('dashboard-content');
   try {
@@ -1914,36 +2011,70 @@ async function loadDashboard() {
       el.innerHTML = '<div class="empty">Aún no hay días procesados.</div>';
       return;
     }
-    el.innerHTML = d.dias.map(dia => {
-      const archivos = (dia.archivos || []).sort((a, b) => b.modified - a.modified);
-      const filesHtml = archivos.length ? archivos.map(f => `
-        <a class="file-link" href="${escape(f.url)}" target="_blank" title="${escape(f.name)}">
-          <span class="file-ico tipo-${escape(f.tipo)}">${FILE_ICONS[f.tipo] || '📄'}</span>
-          <span class="file-name">${escape(f.name)}</span>
-          <span class="size">${f.size_kb} KB</span>
-        </a>`).join('') : '<div style="color:#56666f;font-size:12px">Sin archivos generados aún.</div>';
+    el.innerHTML = d.dias.map((dia, i) => {
+      const archivos = (dia.archivos || []);
+      const filesTable = renderFilesTable(dia.fecha_iso, archivos);
+      // Solo el primer día (el más reciente) abierto por default
+      const openAttr = i === 0 ? ' open' : '';
       const driveBtn = dia.drive_folder
-        ? `<a href="${escape(dia.drive_folder)}" target="_blank">📂 Drive raíz</a>` : '';
+        ? `<a href="${escape(dia.drive_folder)}" target="_blank" rel="noopener">📂 Drive raíz</a>` : '';
       return `
-        <div class="day-card">
+        <div class="day-card" data-fecha="${escape(dia.fecha_iso)}">
           <div class="day-head">
             <div>
               <h3>${escape(dia.fecha_legible)}</h3>
               <span class="iso">(${escape(dia.fecha_iso)})</span>
             </div>
-            <div style="font-size:14px;color:#00d4a3"><b>${fmtMoney(dia.total_dia)}</b></div>
+            <div class="total-pill">${fmtMoney(dia.total_dia)}</div>
           </div>
           <div class="stats">
             <span>🏥 <b>${dia.hospitales}</b> hospitales</span>
             <span>💵 Regular: <b>${fmtMoney(dia.total_regular)}</b></span>
             <span>🎁 Extras: <b>${dia.extras}</b> productos · <b>${fmtMoney(dia.total_extras)}</b></span>
             <span>📝 Ajustes: <b>${dia.ajustes}</b></span>
-            <span>📄 ${archivos.length} archivo(s)</span>
           </div>
-          <div class="files">${filesHtml}</div>
-          <div class="actions">${driveBtn}</div>
+          <details class="files-disclosure"${openAttr}>
+            <summary>
+              <b>📄 Archivos generados</b>
+              <span class="summary-meta">${archivos.length} archivo(s)</span>
+            </summary>
+            <div class="files-table-wrap">${filesTable}</div>
+          </details>
+          <div class="actions" style="margin-top:var(--space-3)">${driveBtn}</div>
         </div>`;
     }).join('');
+    // Wire up sort handlers
+    el.querySelectorAll('.files-table').forEach(tbl => {
+      const fecha = tbl.dataset.fecha;
+      tbl.querySelectorAll('th[data-sort]').forEach(th => {
+        th.addEventListener('click', () => {
+          const k = th.dataset.sort;
+          const cur = _filesSortState[fecha] || {key: 'modified', dir: -1};
+          if (cur.key === k) cur.dir = -cur.dir;
+          else { cur.key = k; cur.dir = -1; }
+          _filesSortState[fecha] = cur;
+          // Re-render solo esta tabla
+          const dia = d.dias.find(x => x.fecha_iso === fecha);
+          if (dia) {
+            const wrap = tbl.closest('.files-table-wrap');
+            if (wrap) wrap.innerHTML = renderFilesTable(fecha, dia.archivos || []);
+            // Re-wire de la nueva tabla
+            const newTbl = wrap.querySelector('.files-table');
+            if (newTbl) {
+              newTbl.querySelectorAll('th[data-sort]').forEach(nt => {
+                nt.addEventListener('click', () => {
+                  const k2 = nt.dataset.sort;
+                  const c = _filesSortState[fecha];
+                  if (c.key === k2) c.dir = -c.dir;
+                  else { c.key = k2; c.dir = -1; }
+                  loadDashboard();  // refresh full (más simple que re-wire recursivo)
+                });
+              });
+            }
+          }
+        });
+      });
+    });
   } catch (e) {
     el.innerHTML = `<div class="empty">Error: ${escape(e.message)}</div>`;
   }

@@ -239,7 +239,26 @@ def resolver_fecha_iso(texto: str, dias_disponibles: list[str] | None = None,
     return candidatos[0]
 
 
-def estado_a_contexto_ai(state: dict) -> str:
+def _destino_pertenece_al_agente(destino: str, agente_tipo: str | None) -> bool:
+    """Decide si un destino del state es relevante para el agente activo.
+
+    - tipo='comedores': solo destinos cuyo nombre empieza con 'Comedor '
+    - tipo='hospitales' o 'dif': destinos que empiezan con 'Hospital ',
+      'Unidad ', o son 'ALMACÉN EHMO' (extras al almacén central de EHMO)
+    - tipo=None u otro: no filtra (compat hacia atrás)
+    """
+    if not agente_tipo:
+        return True
+    n = (destino or "").strip().lower()
+    if agente_tipo == "comedores":
+        return n.startswith("comedor ") or n == "almacen sureña" or n == "almacén sureña"
+    if agente_tipo in ("hospitales", "dif"):
+        return (n.startswith("hospital ") or n.startswith("unidad ")
+                or n == "almacén ehmo" or n == "almacen ehmo")
+    return True
+
+
+def estado_a_contexto_ai(state: dict, agente_tipo: str | None = None) -> str:
     """Convierte el estado a un texto compacto que se le inyecta a Claude.
 
     Sirve para que Claude pueda responder consultas tipo:
@@ -247,6 +266,11 @@ def estado_a_contexto_ai(state: dict) -> str:
       - "cuánto pidió Comitán de jitomate?"
       - "dame el detalle de Tapachula"
     sin necesidad de releer el archivo original.
+
+    Si `agente_tipo` se pasa (ej. 'comedores' / 'hospitales' / 'dif'),
+    filtra los destinos para mostrar SOLO los que pertenecen al agente
+    activo. Esto evita que el agente SUREÑA Comedores vea destinos de
+    EHMO Hospitales que estén en el mismo state/extras del día.
     """
     if not state or not state.get("hospitales"):
         return ""
@@ -254,7 +278,10 @@ def estado_a_contexto_ai(state: dict) -> str:
     fecha_iso = state.get("fecha", "?")
     lines = [f"[CONTEXTO PEDIDO DEL {fecha} — ya procesado, datos disponibles para consultar]",
              "(NO menciones precios ni montos en tu respuesta — solo cantidades y hospitales)"]
+    n_destinos_filtrados = 0
     for hospital, info in state["hospitales"].items():
+        if not _destino_pertenece_al_agente(hospital, agente_tipo):
+            continue
         productos_activos = [p for p in info.get("productos", []) if p.get("cantidad", 0) > 0]
         if not productos_activos:
             continue
@@ -272,8 +299,10 @@ def estado_a_contexto_ai(state: dict) -> str:
             line += it + ", "
         if line.strip():
             lines.append(line.rstrip(", "))
+        n_destinos_filtrados += 1
 
-    # Agregar contexto de EXTRAS del día (con sus folios) si existen
+    # Agregar contexto de EXTRAS del día (con sus folios) si existen,
+    # filtrando también por agente_tipo.
     try:
         from .extras_pedido import cargar_extras
         extras_state = cargar_extras(fecha_iso)
@@ -284,6 +313,8 @@ def estado_a_contexto_ai(state: dict) -> str:
                 if e.get("cantidad", 0) <= 0:
                     continue
                 d = e.get("hospital", "ALMACÉN EHMO")
+                if not _destino_pertenece_al_agente(d, agente_tipo):
+                    continue
                 por_destino.setdefault(d, []).append(e)
             for destino, items in por_destino.items():
                 folio = folios_destinos.get(destino) or "—"
@@ -304,6 +335,10 @@ def estado_a_contexto_ai(state: dict) -> str:
     except Exception:
         pass
 
+    # Si después del filtro no quedó NADA que mostrar, devolver string
+    # vacío (el AI no debe ver el día como "vigente" si no le aplica).
+    if n_destinos_filtrados == 0 and len(lines) <= 2:
+        return ""
     return "\n".join(lines)
 
 

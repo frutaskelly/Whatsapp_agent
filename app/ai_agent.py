@@ -573,7 +573,8 @@ def save_conversation(phone: str, messages: list, agent_id: str | None = None):
 
 
 def chat(phone: str, text: str, attachment_path: Path | None = None,
-         agent_id: str | None = None, agent_addendum: str | None = None) -> dict:
+         agent_id: str | None = None, agent_addendum: str | None = None,
+         agent_tipo: str | None = None) -> dict:
     """Procesa un mensaje (texto y/o adjunto) a través de Claude.
 
     Soporta texto, imagen (jpg/png/webp), PDF y Excel (xlsx/xls).
@@ -605,7 +606,7 @@ def chat(phone: str, text: str, attachment_path: Path | None = None,
         else:
             state, fecha_iso_ctx = cargar_estado_mas_reciente()
         if state:
-            contexto = estado_a_contexto_ai(state)
+            contexto = estado_a_contexto_ai(state, agente_tipo=agent_tipo)
             if dias:
                 contexto = (f"{contexto}\n\n[Días disponibles: {', '.join(dias)} · "
                             f"contexto cargado: {fecha_iso_ctx}]")

@@ -270,6 +270,7 @@ def create_app():
                     phone, text_para_ai, attachment_path=attachment_path,
                     agent_id=(agente_activo or {}).get("id"),
                     agent_addendum=(agente_activo or {}).get("system_prompt_addendum"),
+                    agent_tipo=(agente_activo or {}).get("tipo"),
                 )
             except Exception as e:
                 log.exception(f"Error en /api/simulate (archivo {file_idx}): {e}")

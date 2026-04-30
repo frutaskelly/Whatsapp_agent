@@ -468,16 +468,27 @@ def interpret_message(text: str | None = None, attachment_path: Path | None = No
     messages = conversation_history or []
     messages.append({"role": "user", "content": content})
 
-    # Concatenar addendum del agente al system prompt si vino
-    effective_system = SYSTEM_PROMPT
+    # Construir el system prompt efectivo. Si viene un addendum (agente activo),
+    # va PRIMERO como identidad primaria — domina sobre la base. La base luego
+    # se etiqueta como "reglas generales" para que Claude no la trate como
+    # identidad sino como reglas operativas que pueden quedar sobreescritas.
     if system_prompt_extra and system_prompt_extra.strip():
         effective_system = (
-            SYSTEM_PROMPT
-            + "\n\n═══════════════════════════════════════════════════════════════════════════\n"
-            + "ADDENDUM DEL AGENTE ACTIVO (anula reglas generales si entra en conflicto)\n"
-            + "═══════════════════════════════════════════════════════════════════════════\n"
+            "═══════════════════════════════════════════════════════════════════════════\n"
+            "IDENTIDAD Y ALCANCE DEL AGENTE ACTIVO (PRIMARIO)\n"
+            "═══════════════════════════════════════════════════════════════════════════\n"
+            "Esta sección define QUIÉN ERES y a QUÉ CLIENTE atiendes. Léelo antes\n"
+            "que cualquier otra cosa. Las reglas generales que vienen abajo son\n"
+            "reutilizables entre agentes; cuando algo de abajo entre en conflicto\n"
+            "con esta identidad o alcance, GANA esta sección.\n\n"
             + system_prompt_extra.strip()
+            + "\n\n═══════════════════════════════════════════════════════════════════════════\n"
+            + "REGLAS GENERALES DEL SISTEMA (compartidas entre agentes)\n"
+            + "═══════════════════════════════════════════════════════════════════════════\n"
+            + SYSTEM_PROMPT
         )
+    else:
+        effective_system = SYSTEM_PROMPT
 
     log_event("ai", f"🤖 Llamando a Claude ({config.CLAUDE_MODEL})",
               {"input_chars": sum(len(str(b)) for b in content),

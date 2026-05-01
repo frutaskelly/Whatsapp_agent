@@ -2,6 +2,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
 <title>Frutas Kelly · WhatsApp Agent</title>
 <style>
   /* ════════════════════════════════════════════════════════════════════════
@@ -133,15 +135,22 @@
     justify-content: space-between;
     flex-shrink: 0;
     position: sticky; top: 0; z-index: 10;
+    gap: var(--space-3);
+  }
+  header .header-title {
+    display: flex; align-items: center; gap: var(--space-3);
+    min-width: 0; flex: 1;
   }
   header h1 {
     font-size: var(--fs-headline); line-height: var(--lh-headline);
     font-weight: var(--fw-headline); margin: 0;
     letter-spacing: -0.01em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   header .meta {
     font-size: var(--fs-footnote); color: var(--text-2);
     display: flex; align-items: center; gap: var(--space-2);
+    flex-shrink: 0;
   }
   header .dot {
     width: 8px; height: 8px; border-radius: 50%;
@@ -149,9 +158,26 @@
     box-shadow: 0 0 0 3px rgba(48,209,88,0.18);
     flex-shrink: 0;
   }
+  /* Botones de header (hamburger + events) — solo visibles en mobile */
+  header .icon-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-1);
+    cursor: pointer;
+    width: 36px; height: 36px;
+    display: none;  /* oculto por default; @media los muestra en mobile */
+    align-items: center; justify-content: center;
+    border-radius: var(--radius-md);
+    font-size: 20px;
+    flex-shrink: 0;
+    transition: background var(--t-fast) var(--ease);
+    -webkit-tap-highlight-color: transparent;
+  }
+  header .icon-btn:hover { background: var(--bg-hover); }
+  header .icon-btn:active { background: var(--bg-pressed); }
 
   /* ── Layout: sidebar + content ─────────────────────────────── */
-  .shell { flex: 1; display: flex; min-height: 0; }
+  .shell { flex: 1; display: flex; min-height: 0; position: relative; }
   nav.sidebar {
     width: var(--sidebar-w);
     background: var(--bg-1);
@@ -160,7 +186,17 @@
     overflow-y: auto;
     flex-shrink: 0;
     user-select: none;
+    transition: transform var(--t-base) var(--ease);
   }
+  /* Backdrop para cerrar overlays al tocar fuera (mobile) */
+  .scrim {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 100;
+    opacity: 0; pointer-events: none;
+    transition: opacity var(--t-base) var(--ease);
+  }
+  .scrim.show { opacity: 1; pointer-events: auto; }
   nav.sidebar .nav-item {
     display: flex; align-items: center; gap: var(--space-3);
     padding: var(--space-2) var(--space-3);
@@ -1060,13 +1096,122 @@
     font-family: var(--font-mono); font-size: var(--fs-caption);
     border-radius: var(--radius-xs);
   }
+
+  /* ════════════════════════════════════════════════════════════════════════
+     MOBILE — < 768px (celulares y tablets pequeñas)
+     ════════════════════════════════════════════════════════════════════════ */
+  @media (max-width: 768px) {
+    :root {
+      --header-h: 48px;
+    }
+
+    /* Mostrar botones del header solo en mobile */
+    header .icon-btn { display: flex; }
+    header { padding: 0 var(--space-3); }
+    header h1 { font-size: var(--fs-callout); }
+    header .meta { font-size: var(--fs-caption); }
+
+    /* Sidebar como overlay deslizable */
+    nav.sidebar {
+      position: fixed;
+      top: var(--header-h);
+      left: 0;
+      bottom: 0;
+      z-index: 110;
+      width: 80vw; max-width: 280px;
+      transform: translateX(-100%);
+      box-shadow: var(--shadow-3);
+    }
+    nav.sidebar.show { transform: translateX(0); }
+
+    /* Content full-width al ocultar sidebar */
+    .content { width: 100%; min-width: 0; }
+
+    /* Sandbox: stackeado vertical, events panel como overlay derecho */
+    .sandbox-layout { flex-direction: column; }
+    .sandbox-main {
+      flex: 1;
+      padding: var(--space-3);
+      border-right: none;
+    }
+    .events-panel {
+      position: fixed;
+      top: var(--header-h);
+      right: 0; bottom: 0;
+      z-index: 110;
+      width: 90vw; max-width: 360px;
+      min-width: 0;
+      transform: translateX(100%);
+      transition: transform var(--t-base) var(--ease);
+      box-shadow: var(--shadow-3);
+      border-left: 0.5px solid var(--separator);
+    }
+    .events-panel.show { transform: translateX(0); }
+
+    /* Composer mobile-friendly */
+    .composer {
+      padding: var(--space-2) var(--space-3);
+      gap: var(--space-2);
+    }
+    .composer .hint { display: none; }   /* texto "simulator" lo escondemos */
+    .composer input[type="text"] {
+      font-size: 16px;  /* iOS no hace zoom si >= 16px */
+    }
+    .composer button {
+      padding: var(--space-2) var(--space-3);
+      font-size: var(--fs-callout);
+    }
+
+    /* Agent bar stacked si no cabe */
+    .agent-bar {
+      padding: var(--space-2) var(--space-3);
+      gap: var(--space-2);
+      flex-wrap: wrap;
+    }
+    .agent-meta { font-size: var(--fs-caption); }
+
+    /* Bubbles del feed más anchas */
+    .feed { max-width: none; padding: 0; }
+
+    /* Vistas con scroll: padding compacto */
+    .dashboard-scroll { padding: var(--space-3); }
+    .dashboard-scroll h2 { font-size: var(--fs-title-1); }
+
+    /* Tablas: scroll horizontal en lugar de wrap raro */
+    .table-wrap, .ds-table-wrap, .editor-toolbar {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    table { font-size: var(--fs-footnote); }
+
+    /* KPI grid: 1 columna o 2 estrechas */
+    .kpi-grid { grid-template-columns: repeat(2, 1fr) !important; gap: var(--space-2); }
+
+    /* Editor toolbars: stack vertical */
+    .editor-toolbar {
+      flex-wrap: wrap;
+      gap: var(--space-2);
+    }
+  }
+
+  /* Móvil chico (< 480px) — ajustes adicionales */
+  @media (max-width: 480px) {
+    .kpi-grid { grid-template-columns: 1fr !important; }
+    header h1 { display: none; }   /* deja solo el dot + status para que quepa */
+  }
 </style>
 </head>
 <body>
 <header>
-  <h1>Frutas Kelly</h1>
+  <div class="header-title">
+    <button class="icon-btn" id="btn-toggle-sidebar" type="button" aria-label="Abrir menú" title="Menú">☰</button>
+    <h1>Frutas Kelly</h1>
+  </div>
   <div class="meta"><span class="dot"></span><span id="status">conectando…</span></div>
+  <button class="icon-btn" id="btn-toggle-events" type="button" aria-label="Mostrar/ocultar actividad" title="Actividad del agente">⚙️</button>
 </header>
+
+<div class="scrim" id="scrim"></div>
 
 <div class="shell">
   <!-- ─── SIDEBAR ────────────────────────────────────────────── -->
@@ -1494,6 +1639,42 @@ const linkify = (escapedHtml) => escapedHtml.replace(
 );
 const fmtMoney = (n) => '$' + Number(n).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
+// ─── Mobile: toggles de sidebar y events panel ───────────────────
+// El header tiene 2 botones (☰ izq, ⚙️ der) que solo se ven en mobile
+// vía CSS (display:none por default, display:flex en @media). Cada
+// botón añade/quita clase .show al panel correspondiente y al scrim.
+const _scrim = $('scrim');
+const _sidebar = document.querySelector('nav.sidebar');
+const _eventsPanel = document.querySelector('.events-panel');
+function closeMobilePanels() {
+  _sidebar?.classList.remove('show');
+  _eventsPanel?.classList.remove('show');
+  _scrim?.classList.remove('show');
+}
+function openSidebar() {
+  _eventsPanel?.classList.remove('show');  // un panel a la vez
+  _sidebar?.classList.add('show');
+  _scrim?.classList.add('show');
+}
+function openEvents() {
+  _sidebar?.classList.remove('show');
+  _eventsPanel?.classList.add('show');
+  _scrim?.classList.add('show');
+}
+$('btn-toggle-sidebar')?.addEventListener('click', () => {
+  if (_sidebar?.classList.contains('show')) closeMobilePanels();
+  else openSidebar();
+});
+$('btn-toggle-events')?.addEventListener('click', () => {
+  if (_eventsPanel?.classList.contains('show')) closeMobilePanels();
+  else openEvents();
+});
+_scrim?.addEventListener('click', closeMobilePanels);
+// ESC también cierra
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeMobilePanels();
+});
+
 // ─── Navegación entre vistas ───────────────────────────────────
 let currentView = 'sandbox';
 document.querySelectorAll('nav.sidebar .nav-item[data-view]').forEach(item => {
@@ -1511,6 +1692,7 @@ document.querySelectorAll('nav.sidebar .nav-item[data-view]').forEach(item => {
     if (v === 'agentes') loadAgentes();
     if (v === 'ventas') loadVentas();
     // 'design' es estática (sin fetch)
+    closeMobilePanels();   // al cambiar de vista, cerrar overlays mobile
   });
 });
 

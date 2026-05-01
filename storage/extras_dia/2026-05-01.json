@@ -1,0 +1,35 @@
+{
+  "fecha": "2026-05-01",
+  "fecha_legible": "01 de mayo",
+  "creado": "2026-04-30T18:22:51",
+  "ultima_modificacion": "2026-04-30T18:22:51",
+  "extras": [
+    {
+      "id": "56d15ec5",
+      "hospital": "Hospital General de Huixtla",
+      "alimento": "Uva verde sin semilla",
+      "presentacion": "KG",
+      "cantidad": 12.0,
+      "precio_unitario": 127.5,
+      "importe": 1530.0,
+      "motivo": "Extra evento",
+      "tiene_precio": true,
+      "agregado": "2026-04-30T18:22:51"
+    },
+    {
+      "id": "3c3ccae6",
+      "hospital": "Hospital General de Huixtla",
+      "alimento": "Uva roja sin semilla",
+      "presentacion": "KG",
+      "cantidad": 12.0,
+      "precio_unitario": 127.5,
+      "importe": 1530.0,
+      "motivo": "Extra evento",
+      "tiene_precio": true,
+      "agregado": "2026-04-30T18:22:51"
+    }
+  ],
+  "folios_por_destino": {
+    "Hospital General de Huixtla": "0000000112"
+  }
+}

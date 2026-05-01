@@ -1,0 +1,107 @@
+{
+  "fecha": "2026-04-29",
+  "fecha_legible": "29 de abril",
+  "creado": "2026-04-30T14:32:11",
+  "ultima_modificacion": "2026-04-30T14:32:11",
+  "extras": [
+    {
+      "id": "8d6a157c",
+      "hospital": "ALMACÉN EHMO",
+      "alimento": "Elote procesado desgranado",
+      "presentacion": "KG",
+      "cantidad": 2.0,
+      "precio_unitario": 224.5,
+      "importe": 449.0,
+      "motivo": "Evento",
+      "tiene_precio": true,
+      "agregado": "2026-04-30T14:32:11"
+    },
+    {
+      "id": "4ac41ad8",
+      "hospital": "ALMACÉN EHMO",
+      "alimento": "Epazote",
+      "presentacion": "KG",
+      "cantidad": 0.5,
+      "precio_unitario": 32.5,
+      "importe": 16.25,
+      "motivo": "Evento",
+      "tiene_precio": true,
+      "agregado": "2026-04-30T14:32:11"
+    },
+    {
+      "id": "4f6456f8",
+      "hospital": "ALMACÉN EHMO",
+      "alimento": "Aguacate hass",
+      "presentacion": "KG",
+      "cantidad": 2.0,
+      "precio_unitario": 57.5,
+      "importe": 115.0,
+      "motivo": "Evento",
+      "tiene_precio": true,
+      "agregado": "2026-04-30T14:32:11"
+    },
+    {
+      "id": "bc464b60",
+      "hospital": "ALMACÉN EHMO",
+      "alimento": "Dulce de amaranto",
+      "presentacion": "PZ",
+      "cantidad": 30.0,
+      "precio_unitario": 3.3,
+      "importe": 99.0,
+      "motivo": "Evento",
+      "tiene_precio": true,
+      "agregado": "2026-04-30T14:32:11"
+    },
+    {
+      "id": "a3b02709",
+      "hospital": "ALMACÉN EHMO",
+      "alimento": "Jugo de manzana 250ml",
+      "presentacion": "PZ",
+      "cantidad": 300.0,
+      "precio_unitario": 76.5,
+      "importe": 22950.0,
+      "motivo": "Evento",
+      "tiene_precio": true,
+      "agregado": "2026-04-30T14:32:11"
+    },
+    {
+      "id": "e2e97e0e",
+      "hospital": "ALMACÉN EHMO",
+      "alimento": "Jugo de uva 250ml",
+      "presentacion": "PZ",
+      "cantidad": 300.0,
+      "precio_unitario": 137.5,
+      "importe": 41250.0,
+      "motivo": "Evento",
+      "tiene_precio": true,
+      "agregado": "2026-04-30T14:32:11"
+    },
+    {
+      "id": "a57db479",
+      "hospital": "ALMACÉN EHMO",
+      "alimento": "Palanqueta de cacahuate 30g",
+      "presentacion": "PZ",
+      "cantidad": 100.0,
+      "precio_unitario": 50.0,
+      "importe": 5000.0,
+      "motivo": "Evento",
+      "tiene_precio": true,
+      "agregado": "2026-04-30T14:32:11"
+    },
+    {
+      "id": "32296f0c",
+      "hospital": "ALMACÉN EHMO",
+      "alimento": "Donitas pan dulce",
+      "presentacion": "KG",
+      "cantidad": 3.0,
+      "precio_unitario": 131.8,
+      "importe": 395.4,
+      "motivo": "Evento",
+      "tiene_precio": true,
+      "agregado": "2026-04-30T14:32:11"
+    }
+  ],
+  "folios_por_destino": {
+    "ALMACÉN EHMO": "0000000093"
+  }
+}

@@ -53,6 +53,10 @@ build/
 
 # Backups locales
 backups/
+data/*.backup_*.xlsx
+data/*.backup_*.xls
+storage/pedidos_dia/_backups/
+storage/extras_dia/_backups/
 
 # Storage efímero (regenerable)
 storage/inbox/*

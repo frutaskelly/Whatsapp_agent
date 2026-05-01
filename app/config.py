@@ -32,9 +32,38 @@ ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 EHMO_PHONE = os.getenv("EHMO_PHONE", "")  # Whitelist - solo procesa de este número
 
 # === Storage ===
-INBOX_DIR = BASE_DIR / os.getenv("INBOX_DIR", "storage/inbox")
-CONVERSATIONS_DIR = BASE_DIR / os.getenv("CONVERSATIONS_DIR", "storage/conversations")
-PROCESSED_DIR = BASE_DIR / os.getenv("PROCESSED_DIR", "storage/processed")
+# STORAGE_DIR: raíz de TODO el storage runtime (state, conversations, logs,
+# folio counters, configs editables). En producción (Render) apuntar a un
+# disco persistente, p.ej. STORAGE_DIR=/var/data, para que NO se borre en
+# cada redeploy. Localmente queda en `whatsapp_agent/storage/`.
+_storage_env = os.getenv("STORAGE_DIR", "")
+if _storage_env:
+    STORAGE_DIR = Path(_storage_env) if os.path.isabs(_storage_env) else BASE_DIR / _storage_env
+else:
+    STORAGE_DIR = BASE_DIR / "storage"
+STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+
+# SEED_STORAGE_DIR: directorio in-repo con defaults para sembrar disco vacío
+# en el primer arranque (config files, lista de precios, lo que ya estaba en
+# git). Solo se copia lo que NO exista todavía en STORAGE_DIR.
+SEED_STORAGE_DIR = BASE_DIR / "storage"
+
+def _resolve_storage_subdir(env_name: str, default_subdir: str) -> Path:
+    """Resuelve un subdir de storage. Acepta override via env var.
+    - Si env absoluto → usa tal cual.
+    - Si env relativo → relativo a BASE_DIR (compat con .env legacy
+      'storage/inbox').
+    - Si env vacío → STORAGE_DIR/default_subdir.
+    """
+    val = os.getenv(env_name, "").strip()
+    if not val:
+        return STORAGE_DIR / default_subdir
+    return Path(val) if os.path.isabs(val) else BASE_DIR / val
+
+
+INBOX_DIR = _resolve_storage_subdir("INBOX_DIR", "inbox")
+CONVERSATIONS_DIR = _resolve_storage_subdir("CONVERSATIONS_DIR", "conversations")
+PROCESSED_DIR = _resolve_storage_subdir("PROCESSED_DIR", "processed")
 INBOX_DIR.mkdir(parents=True, exist_ok=True)
 CONVERSATIONS_DIR.mkdir(parents=True, exist_ok=True)
 PROCESSED_DIR.mkdir(parents=True, exist_ok=True)

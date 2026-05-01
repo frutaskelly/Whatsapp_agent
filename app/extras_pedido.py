@@ -35,7 +35,7 @@ _state_lock = threading.Lock()
 
 
 def _extras_dir() -> Path:
-    d = config.BASE_DIR / "storage" / "extras_dia"
+    d = config.STORAGE_DIR / "extras_dia"
     d.mkdir(parents=True, exist_ok=True)
     return d
 

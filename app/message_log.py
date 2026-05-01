@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from . import config
 
-LOG_FILE = config.BASE_DIR / "storage" / "message_log.jsonl"
+LOG_FILE = config.STORAGE_DIR / "message_log.jsonl"
 LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 _lock = threading.Lock()

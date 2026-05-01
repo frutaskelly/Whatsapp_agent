@@ -30,6 +30,15 @@ log = logging.getLogger(__name__)
 
 
 def create_app():
+    # Sembrar storage persistente si está vacío (Render con disk montado).
+    # Idempotente: en local (sin disk) el seed_dir == target y no hace nada.
+    try:
+        from . import bootstrap
+        seed_info = bootstrap.seed_storage_if_empty()
+        log.info(f"[bootstrap] {seed_info}")
+    except Exception as e:
+        log.exception(f"[bootstrap] falló (no fatal): {e}")
+
     app = Flask(__name__)
     app.register_blueprint(webhook_bp)
 
@@ -346,8 +355,8 @@ def create_app():
         import json
         import re
         dias = []
-        pedidos_dir = config.BASE_DIR / "storage" / "pedidos_dia"
-        extras_dir = config.BASE_DIR / "storage" / "extras_dia"
+        pedidos_dir = config.STORAGE_DIR / "pedidos_dia"
+        extras_dir = config.STORAGE_DIR / "extras_dia"
         processed_dir = config.PROCESSED_DIR
 
         for state_path in sorted(pedidos_dir.glob("*.json"), reverse=True):
@@ -433,8 +442,8 @@ def create_app():
         """Tabla consolidada de TODAS las remisiones (regulares + extras) en todos los días."""
         import json
         remisiones = []
-        pedidos_dir = config.BASE_DIR / "storage" / "pedidos_dia"
-        extras_dir = config.BASE_DIR / "storage" / "extras_dia"
+        pedidos_dir = config.STORAGE_DIR / "pedidos_dia"
+        extras_dir = config.STORAGE_DIR / "extras_dia"
 
         for state_path in sorted(pedidos_dir.glob("*.json"), reverse=True):
             try:
@@ -755,8 +764,7 @@ def create_app():
 
     # ─── Agentes (multi-agente) ────────────────────────────────────────────
     def _agentes_path():
-        from pathlib import Path
-        return Path(config.BASE_DIR) / "storage" / "agentes.json"
+        return config.STORAGE_DIR / "agentes.json"
 
     def _cargar_agentes_data() -> dict:
         import json as _json
@@ -833,8 +841,7 @@ def create_app():
 
     # ─── Clientes (editables) ──────────────────────────────────────────────
     def _clientes_path():
-        from pathlib import Path
-        return Path(config.BASE_DIR) / "storage" / "clientes.json"
+        return config.STORAGE_DIR / "clientes.json"
 
     @app.route("/api/clientes", methods=["GET"])
     def api_clientes_get():
@@ -909,8 +916,8 @@ def create_app():
 
         agent_id = (request.args.get("agent_id") or "").strip() or None
 
-        pedidos_dir = Path(config.BASE_DIR) / "storage" / "pedidos_dia"
-        extras_dir = Path(config.BASE_DIR) / "storage" / "extras_dia"
+        pedidos_dir = config.STORAGE_DIR / "pedidos_dia"
+        extras_dir = config.STORAGE_DIR / "extras_dia"
 
         # Map agent_id → cliente_id (si está pedido)
         cliente_filter = None

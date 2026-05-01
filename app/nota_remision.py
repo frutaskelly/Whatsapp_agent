@@ -112,7 +112,7 @@ FOLIO_INICIAL = 1  # arranca en 1; el operador puede editar el archivo si quiere
 def _folio_file(cliente: str = "EHMO") -> Path:
     """Path al archivo de folio counter del cliente especificado."""
     fname = CLIENTES.get(cliente, CLIENTES["EHMO"])["folio_file"]
-    return config.BASE_DIR / "storage" / fname
+    return config.STORAGE_DIR / fname
 
 
 def _next_folio(cliente: str = "EHMO") -> str:

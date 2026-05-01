@@ -82,7 +82,7 @@ def _keywords_json_path() -> Path:
     """Path a storage/keywords.json. Resuelve relativo al BASE_DIR del proyecto."""
     # Import local para evitar circular import (config → otros)
     from . import config
-    return config.BASE_DIR / "storage" / "keywords.json"
+    return config.STORAGE_DIR / "keywords.json"
 
 
 @lru_cache(maxsize=1)

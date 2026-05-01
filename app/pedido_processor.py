@@ -72,7 +72,7 @@ IGNORAR_KW = [
 #   "excluidos_kw": ["nuevo hospital a excluir"]
 # }
 def _keywords_file() -> Path:
-    return config.BASE_DIR / "storage" / "keywords.json"
+    return config.STORAGE_DIR / "keywords.json"
 
 
 @lru_cache(maxsize=1)

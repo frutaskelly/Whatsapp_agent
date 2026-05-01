@@ -1,11 +1,31 @@
-# Configuración para deploy automático en Render
-# Render lee este archivo cuando conectas el repo de GitHub
+# Configuración para deploy automático en Render.
+# Render lee este archivo cuando conectas el repo de GitHub.
+#
+# IMPORTANTE — persistencia del state:
+#   Hoy corre en plan free, sin disco persistente. El state runtime
+#   (pedidos_dia, extras_dia, folio counters, conversations, logs) se
+#   borra en cada redeploy y se re-siembra desde lo committed en
+#   `whatsapp_agent/storage/` vía `app/bootstrap.py`.
+#
+#   Para que el state SOBREVIVA redeploys hay dos caminos:
+#   1) Auto-host (Mac mini + Cloudflare Tunnel) — recomendado.
+#   2) Render Starter ($7/mes) + persistent disk:
+#        plan: starter
+#        disk:
+#          name: storage
+#          mountPath: /var/data
+#          sizeGB: 1
+#        envVars:
+#          - key: STORAGE_DIR
+#            value: /var/data
+#      El bootstrap copia los seeds del repo al disco vacío en el
+#      primer arranque y a partir de ahí los redeploys no lo tocan.
 
 services:
   - type: web
     name: frutaskelly-whatsapp-agent
     runtime: python
-    plan: free  # cambia a "starter" ($7/mes) para que no se duerma
+    plan: free  # cambiar a "starter" si se activa persistent disk
     region: oregon
     branch: main
     buildCommand: pip install -r requirements.txt

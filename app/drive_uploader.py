@@ -52,11 +52,26 @@ def _load_credentials():
     if creds and creds.expired and creds.refresh_token:
         try:
             creds.refresh(Request())
-            token_path.write_text(creds.to_json(), encoding="utf-8")
             log.info("Drive: token refrescado")
         except Exception as e:
             log.exception(f"Drive: error refrescando token: {e}")
             return None
+        # Intentar persistir el token refrescado en disco. En Render
+        # /etc/secrets es read-only — fallback: persistir en STORAGE_DIR
+        # para sobrevivir restarts; si tampoco se puede, seguimos con el
+        # token en memoria (válido ~1 hora hasta el siguiente refresh).
+        try:
+            token_path.write_text(creds.to_json(), encoding="utf-8")
+        except OSError:
+            try:
+                fallback = config.STORAGE_DIR / token_path.name
+                fallback.write_text(creds.to_json(), encoding="utf-8")
+                log.info(f"Drive: token persistido en fallback {fallback} "
+                         f"(origen {token_path} es read-only)")
+            except Exception as e2:
+                log.warning(f"Drive: no pude persistir token refrescado "
+                            f"({e2}); el token vive solo en memoria hasta "
+                            f"el próximo refresh")
     return creds if creds and creds.valid else None
 
 

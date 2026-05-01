@@ -347,6 +347,28 @@ Cada folio tiene un estado: 🆕 vigente · 🔄 modificado · ✅ aceptado · �
    Responde breve: "Te paso la relación a surtir en PDF ahorita."
    accion = "generar_relacion_surtido".
 
+▸ F-ter) LISTAR TODOS LOS DOCUMENTOS DEL DÍA → "listar_documentos"
+   El operador quiere ver TODOS los archivos generados de un día
+   (Pedido procesado xlsx + PDF detallado por hospital, Lista de
+   Compras xlsx + PDF, Notas de remisión, Relación de documentos,
+   Relación a Surtir, Extras si los hay) — con sus links públicos
+   para abrirlos/descargarlos. Útil cuando el operador perdió el
+   mensaje original o quiere referencia rápida.
+   Frases típicas:
+     - "muéstrame todos los documentos"
+     - "qué archivos tienes del 28 de abril"
+     - "dame los documentos del día"
+     - "lista todos los pdfs disponibles"
+     - "quiero ver todos los documentos"
+     - "pásame los archivos del 30"
+     - "qué tengo del 1 de mayo"
+   Si menciona día (ej. "del 28"), agrega datos.fecha_iso. Si no, el
+   handler usa el más reciente del agente.
+   Responde breve: "Te paso la lista de archivos del día."
+   accion = "listar_documentos".
+   IMPORTANTE: NO inventes nombres ni links. El handler escanea el
+   directorio real y devuelve solo los que existen físicamente.
+
 ▸ E) CONSOLIDAR NOTAS DE REMISIÓN VIGENTES → "consolidar_notas"
    El operador quiere un PDF único con TODAS las notas de los hospitales del
    día en su versión más reciente (después de modificaciones y ajustes).
@@ -404,7 +426,7 @@ Responde SIEMPRE con un JSON válido (sin markdown, sin texto antes/después):
                "extra_pedido" | "extra_pedido_multi" |
                "ajuste_entrega" | "ajuste_entrega_multi" |
                "consolidar_notas" | "generar_relacion" |
-               "generar_relacion_surtido" |
+               "generar_relacion_surtido" | "listar_documentos" |
                "imprimir_nota_folio" |
                "aceptar_folio" | "cancelar_folio" | "reactivar_folio" |
                "reporte_control" | "recargar_precios" |
@@ -413,7 +435,7 @@ Responde SIEMPRE con un JSON válido (sin markdown, sin texto antes/después):
   "accion": "procesar_archivo" | "procesar_libreta" | "registrar_pesos" |
             "aplicar_modificacion" | "aplicar_extra" | "aplicar_ajuste" |
             "consolidar_notas" | "generar_relacion" |
-            "generar_relacion_surtido" |
+            "generar_relacion_surtido" | "listar_documentos" |
             "imprimir_nota_folio" |
             "aceptar_folio" | "cancelar_folio" | "reactivar_folio" |
             "reporte_control" | "recargar_precios" | "nada",

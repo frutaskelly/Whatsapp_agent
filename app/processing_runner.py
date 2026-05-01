@@ -53,6 +53,11 @@ def maybe_process(phone: str, attachment_path: Path | None, ai_result: dict,
                                                    fecha_iso=fecha_iso_pedida,
                                                    agente=agente)
 
+    # Caso 0c-ter: listar TODOS los documentos generados de un día con sus links
+    if accion == "listar_documentos":
+        return _listar_documentos_dia(phone, fecha_iso=fecha_iso_pedida,
+                                        agente=agente)
+
     # Caso 0d: procesar pedido extraído de libreta (fotos manuscritas, sin Excel).
     # Usado por el agente SUREÑA Comedores. El AI ya extrajo y confirmó los
     # datos con el operador (contenido + fecha de entrega) antes de disparar esto.
@@ -859,6 +864,166 @@ def _generar_relacion_surtido_handler(phone: str,
                              _meta_with_agent(meta, agente))
     return {"relacion_surtido": True, "drive_link": drive_link,
             "destinos": rs["destinos_count"]}
+
+
+def _listar_documentos_dia(phone: str, fecha_iso: str | None = None,
+                             agente: dict | None = None) -> dict:
+    """Devuelve la lista de TODOS los archivos generados del día con sus links.
+
+    El operador a veces necesita re-acceder a documentos viejos (PDF
+    detallado por hospital, lista de compras, notas, relaciones…) sin
+    re-procesar. Este handler escanea processed_dir, agrupa por
+    categoría y devuelve un mensaje con los links públicos a cada uno.
+
+    Si fecha_iso viene, opera sobre ESE día. Si no, busca el día más
+    reciente con destinos del tipo del agente activo.
+    """
+    from .estado_pedido import (cargar_estado, cargar_estado_mas_reciente,
+                                  listar_fechas_disponibles,
+                                  _destino_pertenece_al_agente)
+    from urllib.parse import quote
+
+    agente_tipo = (agente or {}).get("tipo")
+
+    state = None
+    if fecha_iso:
+        state = cargar_estado(fecha_iso)
+    elif agente_tipo:
+        for f in listar_fechas_disponibles():
+            s = cargar_estado(f)
+            if not s:
+                continue
+            if any(_destino_pertenece_al_agente(h, agente_tipo)
+                    for h in s.get("hospitales", {}).keys()):
+                state = s
+                fecha_iso = f
+                break
+    else:
+        state, fecha_iso = cargar_estado_mas_reciente()
+
+    if not state:
+        msg = "⚠️ No hay pedido del día procesado todavía."
+        message_log.log_message("out", phone, "text", msg,
+                                 _meta_with_agent({"listar_documentos": False}, agente))
+        return {"error": "sin pedido"}
+
+    fecha_legible = state.get("fecha_legible", fecha_iso)
+
+    # Determinar host público (Render lo pone como RENDER_EXTERNAL_URL).
+    # Fallback al request actual si estamos en contexto Flask.
+    base_url = ""
+    try:
+        from flask import request, has_request_context
+        if has_request_context():
+            base_url = request.host_url.rstrip("/")
+    except Exception:
+        pass
+    if not base_url:
+        import os as _os
+        base_url = (_os.getenv("PUBLIC_BASE_URL")
+                    or _os.getenv("RENDER_EXTERNAL_URL")
+                    or "")
+        base_url = base_url.rstrip("/")
+
+    # Escanear processed_dir
+    proc_dir = config.PROCESSED_DIR
+    patterns = [fecha_legible, f"({fecha_iso})", fecha_iso]
+    candidatos = []
+    if proc_dir.exists():
+        for f in proc_dir.iterdir():
+            if not f.is_file():
+                continue
+            if any(p in f.name for p in patterns):
+                candidatos.append(f)
+
+    # Categorizar y quedarse con el archivo más reciente de cada tipo.
+    # Cada slot tiene (tipo_label, file_path, mtime).
+    categorias: dict[str, tuple[str, "Path", float]] = {}
+
+    def _put(slot_key: str, label: str, fpath):
+        mtime = fpath.stat().st_mtime
+        existing = categorias.get(slot_key)
+        if not existing or mtime > existing[2]:
+            categorias[slot_key] = (label, fpath, mtime)
+
+    for f in candidatos:
+        nl = f.name.lower()
+        ext = f.suffix.lower()
+        # Orden de chequeos: más específicos primero
+        if "lista de compras" in nl or "lista_compras" in nl:
+            slot = "lista_compras_xlsx" if ext == ".xlsx" else "lista_compras_pdf"
+            label = ("📝 Lista de compras (Excel editable)" if ext == ".xlsx"
+                     else "🛒 Lista de compras (PDF imprimible)")
+            _put(slot, label, f)
+        elif "relación a surtir" in nl or "relacion a surtir" in nl:
+            _put("relacion_surtido", "🚚 Relación a surtir (PDF para el surtidor)", f)
+        elif ("relación documentos" in nl or "relacion documentos" in nl
+                or "relación de documentos" in nl or "relacion de documentos" in nl):
+            slot = "relacion_xlsx" if ext == ".xlsx" else "relacion_pdf"
+            label = ("📋 Relación de documentos (Excel)" if ext == ".xlsx"
+                     else "📋 Relación de documentos (PDF horizontal)")
+            _put(slot, label, f)
+        elif "extras" in nl:
+            slot = "extras_xlsx" if ext == ".xlsx" else "extras_pdf"
+            label = ("🛍️ EXTRAS (Excel)" if ext == ".xlsx"
+                     else "🛍️ EXTRAS (PDF)")
+            _put(slot, label, f)
+        elif ("nota folio" in nl or "nota corregida" in nl):
+            # Notas individuales por folio — agrupar todas
+            key = f"nota_individual::{f.name}"
+            _put(key, f"💵 {f.name}", f)
+        elif "consolidadas" in nl or ("notas remisión" in nl and "remisión" in nl):
+            _put("notas_consolidadas", "💵 Notas de remisión consolidadas (PDF)", f)
+        elif "nota" in nl and ("remisión" in nl or "remision" in nl):
+            _put("notas_pdf", "💵 Notas de remisión (PDF)", f)
+        elif "pedido" in nl:
+            slot = "pedido_xlsx" if ext == ".xlsx" else "pedido_pdf"
+            label = ("📊 Pedido procesado (Excel completo)" if ext == ".xlsx"
+                     else "🖨️ PDF detallado por hospital (cantidades, sin precios)")
+            _put(slot, label, f)
+
+    # Construir mensaje en orden lógico
+    orden = [
+        "pedido_xlsx", "pedido_pdf",
+        "lista_compras_pdf", "lista_compras_xlsx",
+        "notas_pdf", "notas_consolidadas",
+        "extras_pdf", "extras_xlsx",
+        "relacion_xlsx", "relacion_pdf",
+        "relacion_surtido",
+    ]
+
+    lines = [f"📁 *Documentos del día {fecha_legible}*"]
+    if not categorias:
+        lines.append("")
+        lines.append("⚠️ No encontré archivos generados para este día. Si el "
+                     "pedido se procesó hace mucho, regenera con: "
+                     "'imprime las notas del " + fecha_legible + "'")
+    else:
+        agregados = set()
+        for slot in orden:
+            entry = categorias.get(slot)
+            if not entry:
+                continue
+            label, fpath, _ = entry
+            agregados.add(slot)
+            url = (f"{base_url}/files/processed/{quote(fpath.name)}"
+                   if base_url else f"./files/processed/{quote(fpath.name)}")
+            lines.append(f"• {label}:\n  {url}")
+        # Notas individuales por folio (todas)
+        for key, entry in sorted(categorias.items()):
+            if key.startswith("nota_individual::"):
+                label, fpath, _ = entry
+                url = (f"{base_url}/files/processed/{quote(fpath.name)}"
+                       if base_url else f"./files/processed/{quote(fpath.name)}")
+                lines.append(f"• {label}:\n  {url}")
+
+    msg = "\n".join(lines)
+    meta = {"listar_documentos": True, "fecha_iso": fecha_iso,
+            "n_archivos": len(categorias)}
+    message_log.log_message("out", phone, "text", msg,
+                             _meta_with_agent(meta, agente))
+    return {"listar_documentos": True, "fecha_iso": fecha_iso,
+            "n_archivos": len(categorias)}
 
 
 def _generar_relacion_handler(phone: str, fecha_iso: str | None = None) -> dict:

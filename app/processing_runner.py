@@ -47,6 +47,12 @@ def maybe_process(phone: str, attachment_path: Path | None, ai_result: dict,
     if accion == "generar_relacion":
         return _generar_relacion_handler(phone, fecha_iso=fecha_iso_pedida)
 
+    # Caso 0c-bis: generar la "Relación a surtir" (PDF para el surtidor)
+    if accion == "generar_relacion_surtido":
+        return _generar_relacion_surtido_handler(phone,
+                                                   fecha_iso=fecha_iso_pedida,
+                                                   agente=agente)
+
     # Caso 0d: procesar pedido extraído de libreta (fotos manuscritas, sin Excel).
     # Usado por el agente SUREÑA Comedores. El AI ya extrajo y confirmó los
     # datos con el operador (contenido + fecha de entrega) antes de disparar esto.
@@ -79,7 +85,7 @@ def maybe_process(phone: str, attachment_path: Path | None, ai_result: dict,
 
     # Caso 1: modificación del pedido (cliente cambia ANTES de surtir, productos FyV)
     if accion == "aplicar_modificacion":
-        return _aplicar_modificaciones_desde_ai(phone, ai_result)
+        return _aplicar_modificaciones_desde_ai(phone, ai_result, agente=agente)
 
     # Caso 2: extras para cubrir desabasto (productos NO-FyV, hoja y nota APARTE)
     if accion == "aplicar_extra":
@@ -87,7 +93,7 @@ def maybe_process(phone: str, attachment_path: Path | None, ai_result: dict,
 
     # Caso 3: ajustes de entrega (personal después de surtir)
     if accion == "aplicar_ajuste":
-        return _aplicar_ajustes_desde_ai(phone, ai_result)
+        return _aplicar_ajustes_desde_ai(phone, ai_result, agente=agente)
 
     if accion != "procesar_archivo":
         return None
@@ -153,6 +159,20 @@ def maybe_process(phone: str, attachment_path: Path | None, ai_result: dict,
     drive_notas = drive_upload(notas_path, subfolder=subfolder) if notas_path else None
     drive_relacion = drive_upload(relacion_path, subfolder=subfolder) if relacion_path else None
     drive_relacion_pdf = drive_upload(relacion_pdf_path, subfolder=subfolder) if relacion_pdf_path else None
+
+    # Generar también la "Relación a surtir" (PDF imprimible para el surtidor)
+    drive_relacion_surtido = None
+    relacion_surtido_path = None
+    try:
+        from .relacion_documentos import generar_relacion_surtido_pdf
+        rs = generar_relacion_surtido_pdf(subfolder, fecha_legible=fecha,
+                                            agente=agente)
+        if rs and not rs.get("error"):
+            relacion_surtido_path = rs["output_path"]
+            drive_relacion_surtido = drive_upload(relacion_surtido_path,
+                                                    subfolder=subfolder)
+    except Exception as e:
+        log.exception(f"Error generando relación a surtir: {e}")
 
     # ─── Mensaje completo (lo construye Python, no se corta nunca) ───────────
     lines = [
@@ -225,6 +245,10 @@ def maybe_process(phone: str, attachment_path: Path | None, ai_result: dict,
         lines.append(f"📋 Relación de documentos (PDF horizontal para imprimir): {drive_relacion_pdf['link']}")
     elif relacion_pdf_path:
         lines.append("⚠️ Relación PDF guardada local (no se pudo subir a Drive)")
+    if drive_relacion_surtido:
+        lines.append(f"🚚 Relación a surtir (PDF para el surtidor): {drive_relacion_surtido['link']}")
+    elif relacion_surtido_path:
+        lines.append("⚠️ Relación a surtir PDF guardada local (no se pudo subir a Drive)")
 
     msg = "\n".join(lines)
 
@@ -263,14 +287,17 @@ def maybe_process(phone: str, attachment_path: Path | None, ai_result: dict,
     }
 
 
-def _aplicar_ajustes_desde_ai(phone: str, ai_result: dict) -> dict:
+def _aplicar_ajustes_desde_ai(phone: str, ai_result: dict,
+                                agente: dict | None = None) -> dict:
     """Aplica los ajustes que Claude extrajo del mensaje texto."""
     from .ajuste_entrega import aplicar_ajustes
 
     datos = ai_result.get("datos", {}) or {}
     fecha_iso = datos.get("fecha_iso") or None
+    label_sg = _label_destinos(agente, 1)
+    icon_destino = "🍽️" if (agente or {}).get("tipo") == "comedores" else "🏥"
 
-    # Normalizar a una lista de (hospital, ajustes)
+    # Normalizar a una lista de (destino, ajustes)
     grupos: list[tuple[str, list]] = []
     if "ajustes_por_hospital" in datos:
         for g in datos["ajustes_por_hospital"]:
@@ -278,8 +305,9 @@ def _aplicar_ajustes_desde_ai(phone: str, ai_result: dict) -> dict:
     elif "hospital" in datos:
         grupos.append((datos.get("hospital", ""), datos.get("ajustes", []) or []))
     else:
-        msg = "⚠️ Detecté un ajuste pero no entendí el hospital o productos. Reformula?"
-        message_log.log_message("out", phone, "text", msg, {"ajuste_error": True})
+        msg = f"⚠️ Detecté un ajuste pero no entendí el {label_sg} o productos. Reformula?"
+        message_log.log_message("out", phone, "text", msg,
+                                 _meta_with_agent({"ajuste_error": True}, agente))
         return {"error": "datos incompletos"}
 
     resultados = []
@@ -297,7 +325,7 @@ def _aplicar_ajustes_desde_ai(phone: str, ai_result: dict) -> dict:
             lines.append(f"❌ {hospital_input}: {r.get('error', 'error')}")
             continue
         lines.append("")
-        lines.append(f"🏥 *{r['hospital_resuelto']}*")
+        lines.append(f"{icon_destino} *{r['hospital_resuelto']}*")
         for c in r["cambios"]:
             antes = c["cantidad_anterior"]
             despues = c["cantidad_nueva"]
@@ -324,17 +352,21 @@ def _aplicar_ajustes_desde_ai(phone: str, ai_result: dict) -> dict:
 
     msg = "\n".join(lines)
     meta = {"ajuste": True, "resultados": resultados}
-    message_log.log_message("out", phone, "text", msg, meta)
+    message_log.log_message("out", phone, "text", msg, _meta_with_agent(meta, agente))
 
     return {"ajuste": True, "resultados": resultados}
 
 
-def _aplicar_modificaciones_desde_ai(phone: str, ai_result: dict) -> dict:
+def _aplicar_modificaciones_desde_ai(phone: str, ai_result: dict,
+                                       agente: dict | None = None) -> dict:
     """Aplica modificaciones pre-surtido y regenera el PDF imprimible + notas."""
     from .modificacion_pedido import aplicar_modificaciones, regenerar_archivos
 
     datos = ai_result.get("datos", {}) or {}
     fecha_iso_pedida = datos.get("fecha_iso") or None
+    label_sg = _label_destinos(agente, 1)
+    icon_destino = "🍽️" if (agente or {}).get("tipo") == "comedores" else "🏥"
+
     grupos: list[tuple[str, list]] = []
     if "modificaciones_por_hospital" in datos:
         for g in datos["modificaciones_por_hospital"]:
@@ -342,8 +374,9 @@ def _aplicar_modificaciones_desde_ai(phone: str, ai_result: dict) -> dict:
     elif "hospital" in datos:
         grupos.append((datos.get("hospital", ""), datos.get("modificaciones", []) or []))
     else:
-        msg = "⚠️ Detecté una modificación pero no entendí el hospital o productos. Reformula?"
-        message_log.log_message("out", phone, "text", msg, {"modificacion_error": True})
+        msg = f"⚠️ Detecté una modificación pero no entendí el {label_sg} o productos. Reformula?"
+        message_log.log_message("out", phone, "text", msg,
+                                 _meta_with_agent({"modificacion_error": True}, agente))
         return {"error": "datos incompletos"}
 
     resultados = []
@@ -361,7 +394,7 @@ def _aplicar_modificaciones_desde_ai(phone: str, ai_result: dict) -> dict:
             continue
         fecha_iso = r["fecha"]
         lines.append("")
-        lines.append(f"🏥 *{r['hospital_resuelto']}*")
+        lines.append(f"{icon_destino} *{r['hospital_resuelto']}*")
         for c in r["cambios"]:
             op_icon = {"agregar": "➕", "restar": "➖", "cancelar": "❌", "fijar": "🔧"}.get(c["operacion"], "•")
             antes = c["cantidad_anterior"]
@@ -394,11 +427,11 @@ def _aplicar_modificaciones_desde_ai(phone: str, ai_result: dict) -> dict:
             lines.append(f"📋 Relación actualizada (PDF): {regen['drive_relacion_pdf']['link']}")
     else:
         lines.append("")
-        lines.append("⚠️ No se regeneraron archivos (ningún hospital se modificó).")
+        lines.append(f"⚠️ No se regeneraron archivos (ningún {label_sg} se modificó).")
 
     msg = "\n".join(lines)
     meta = {"modificacion": True, "resultados": resultados}
-    message_log.log_message("out", phone, "text", msg, meta)
+    message_log.log_message("out", phone, "text", msg, _meta_with_agent(meta, agente))
     return {"modificacion": True, "resultados": resultados}
 
 
@@ -544,6 +577,18 @@ def _procesar_libreta_desde_ai(phone: str, ai_result: dict,
         message_log.log_message("out", phone, "text", msg, {"libreta_error": True})
         return result
 
+    # Generar también la "Relación a surtir" para el operador
+    drive_relacion_surtido = None
+    try:
+        from .relacion_documentos import generar_relacion_surtido_pdf
+        rs = generar_relacion_surtido_pdf(fecha_iso, fecha_legible=fecha_legible,
+                                            agente=agente)
+        if rs and not rs.get("error"):
+            drive_relacion_surtido = drive_upload(rs["output_path"],
+                                                    subfolder=fecha_iso)
+    except Exception as e:
+        log.exception(f"Error generando relación a surtir (libreta): {e}")
+
     # Mensaje de seguimiento al operador con los links
     lines = [
         f"✓ *Documentos de surtido generados* — {fecha_legible}",
@@ -556,6 +601,8 @@ def _procesar_libreta_desde_ai(phone: str, ai_result: dict,
         lines.append(f"🛒 Lista de compras (consolidada PDF): {result['drive_lc_pdf']['link']}")
     if result.get("drive_lc_xlsx"):
         lines.append(f"📝 Lista de compras (Excel editable): {result['drive_lc_xlsx']['link']}")
+    if drive_relacion_surtido:
+        lines.append(f"🚚 Relación a surtir (PDF para el surtidor): {drive_relacion_surtido['link']}")
 
     # Identificar productos que NO son kg (vinieron en manojos, piezas, caja...)
     # para pedir explícitamente sus pesos reales.
@@ -612,26 +659,70 @@ def _registrar_pesos_desde_ai(phone: str, ai_result: dict,
       ]
     """
     from .libreta_processor import aplicar_pesos
-    from .estado_pedido import cargar_estado_mas_reciente
+    from .estado_pedido import (cargar_estado, cargar_estado_mas_reciente,
+                                  listar_fechas_disponibles,
+                                  _destino_pertenece_al_agente)
 
     datos = ai_result.get("datos") or {}
     pesos = datos.get("pesos") or []
     fecha_iso = (datos.get("fecha_iso") or datos.get("fecha_entrega") or "").strip()
+    agente_tipo = (agente or {}).get("tipo")
 
     if not pesos:
         msg = "⚠️ No identifiqué pesos en tu mensaje. Mándamelos así: 'Patria: espinacas 4kg, sandías 18kg'."
-        message_log.log_message("out", phone, "text", msg, {"pesos_error": "sin pesos"})
+        message_log.log_message("out", phone, "text", msg,
+                                 _meta_with_agent({"pesos_error": "sin pesos"}, agente))
         return {"error": "sin pesos en datos"}
 
-    # Si no vino fecha, usar el día más reciente con requires_pesos
+    # Buscar todos los días que tienen state con requires_pesos=True para
+    # destinos del tipo del agente activo. Sirven como (a) fallback si no
+    # vino fecha, (b) sugerencia si la fecha pedida no tiene state,
+    # (c) auto-corrección si solo hay un candidato.
+    dias_pendientes: list[str] = []
+    for f in listar_fechas_disponibles():
+        s = cargar_estado(f)
+        if not s or not s.get("requires_pesos"):
+            continue
+        if agente_tipo:
+            destinos_del_agente = [h for h in s.get("hospitales", {}).keys()
+                                    if _destino_pertenece_al_agente(h, agente_tipo)]
+            if not destinos_del_agente:
+                continue
+        dias_pendientes.append(f)
+
+    def _msg_sin_pendientes_o_listar() -> str:
+        if not dias_pendientes:
+            return ("⚠️ No hay ningún día esperando pesos. Si el pedido aún no "
+                    "se ha procesado, mándame primero la foto de la libreta.")
+        if len(dias_pendientes) == 1:
+            return (f"⚠️ El único día esperando pesos es {dias_pendientes[0]}. "
+                    f"Confirma si los kg que me enviaste son para ese día.")
+        return ("⚠️ Días esperando pesos: " + ", ".join(dias_pendientes) +
+                ". Indícame a cuál corresponden los kg.")
+
+    # Si no vino fecha, intentar inferirla de los días pendientes
     if not fecha_iso:
-        state, fecha_reciente = cargar_estado_mas_reciente()
-        if state and state.get("requires_pesos"):
-            fecha_iso = fecha_reciente
+        if len(dias_pendientes) == 1:
+            fecha_iso = dias_pendientes[0]
         else:
-            msg = "⚠️ No me dijiste la fecha y no encontré un día reciente esperando pesos. Indícame la fecha."
-            message_log.log_message("out", phone, "text", msg, {"pesos_error": "sin fecha"})
+            msg = _msg_sin_pendientes_o_listar()
+            message_log.log_message("out", phone, "text", msg,
+                                     _meta_with_agent({"pesos_error": "sin fecha"}, agente))
             return {"error": "sin fecha"}
+
+    # Validar que la fecha pedida tenga state esperando pesos. Si no, NO auto-
+    # corregir (puede ser un error de comunicación serio): pedir confirmación
+    # explícita al operador.
+    state_dia = cargar_estado(fecha_iso)
+    if not state_dia or not state_dia.get("requires_pesos"):
+        razon = "no hay pedido" if not state_dia else "ya tiene los pesos registrados"
+        msg = (f"⚠️ El día {fecha_iso} {razon}.\n"
+               + _msg_sin_pendientes_o_listar()
+               + "\nNo registré nada — confirma a qué día aplican los kg antes "
+               "de reenviarlos.")
+        message_log.log_message("out", phone, "text", msg,
+                                 _meta_with_agent({"pesos_error": "sin state"}, agente))
+        return {"error": f"no hay state requires_pesos para {fecha_iso}"}
 
     cliente = (agente or {}).get("cliente_id", "SURENA")
 
@@ -640,12 +731,14 @@ def _registrar_pesos_desde_ai(phone: str, ai_result: dict,
     except Exception as e:
         log.exception(f"Error en aplicar_pesos: {e}")
         msg = f"⚠️ Error procesando pesos: {e}"
-        message_log.log_message("out", phone, "text", msg, {"pesos_error": str(e)})
+        message_log.log_message("out", phone, "text", msg,
+                                 _meta_with_agent({"pesos_error": str(e)}, agente))
         return {"error": str(e)}
 
     if result.get("error"):
         msg = f"⚠️ {result['error']}"
-        message_log.log_message("out", phone, "text", msg, {"pesos_error": True})
+        message_log.log_message("out", phone, "text", msg,
+                                 _meta_with_agent({"pesos_error": True}, agente))
         return result
 
     # Mensaje al operador
@@ -683,6 +776,89 @@ def _registrar_pesos_desde_ai(phone: str, ai_result: dict,
 
     return {"pesos": True, **{k: v for k, v in result.items()
                                 if not isinstance(v, type(message_log))}}
+
+
+def _generar_relacion_surtido_handler(phone: str,
+                                        fecha_iso: str | None = None,
+                                        agente: dict | None = None) -> dict:
+    """Genera el PDF de 'Relación a surtir' del día.
+
+    Si fecha_iso se pasa, opera sobre ESE día. Sino, sobre el día más
+    reciente con destinos del tipo del agente activo (o el más reciente
+    a secas si no hay agente).
+    """
+    from .estado_pedido import (cargar_estado, cargar_estado_mas_reciente,
+                                  listar_fechas_disponibles,
+                                  _destino_pertenece_al_agente)
+    from .relacion_documentos import generar_relacion_surtido_pdf
+    from datetime import datetime
+
+    agente_tipo = (agente or {}).get("tipo")
+
+    state = None
+    if fecha_iso:
+        state = cargar_estado(fecha_iso)
+    elif agente_tipo:
+        for f in listar_fechas_disponibles():
+            s = cargar_estado(f)
+            if not s:
+                continue
+            if any(_destino_pertenece_al_agente(h, agente_tipo)
+                    for h in s.get("hospitales", {}).keys()):
+                state = s
+                fecha_iso = f
+                break
+    else:
+        state, fecha_iso = cargar_estado_mas_reciente()
+
+    if not state:
+        msg = "⚠️ No hay pedido procesado todavía. Procesa el Excel/foto primero."
+        message_log.log_message("out", phone, "text", msg,
+                                 _meta_with_agent({"relacion_surtido": False}, agente))
+        return {"error": "no hay pedido"}
+
+    fecha_legible = state.get("fecha_legible", fecha_iso)
+    try:
+        rs = generar_relacion_surtido_pdf(fecha_iso,
+                                            fecha_legible=fecha_legible,
+                                            agente=agente)
+    except Exception as e:
+        log.exception(f"Error generando relación a surtir: {e}")
+        msg = f"⚠️ Error al generar la relación a surtir: {e}"
+        message_log.log_message("out", phone, "text", msg,
+                                 _meta_with_agent({"relacion_surtido": False}, agente))
+        return {"error": str(e)}
+
+    if rs.get("error"):
+        msg = f"⚠️ {rs['error']}"
+        message_log.log_message("out", phone, "text", msg,
+                                 _meta_with_agent({"relacion_surtido": False}, agente))
+        return rs
+
+    drive_link = None
+    try:
+        d = drive_upload(rs["output_path"], subfolder=fecha_iso)
+        if d:
+            drive_link = d["link"]
+    except Exception as e:
+        log.warning(f"No pude subir relación a surtir a Drive: {e}")
+
+    label_pl = _label_destinos(agente, rs["destinos_count"])
+    lines = [f"🚚 *Relación a surtir* — {fecha_legible}",
+             f"Total: {rs['destinos_count']} {label_pl}"]
+    if drive_link:
+        lines.append(f"🖨️ PDF para imprimir: {drive_link}")
+    else:
+        lines.append("⚠️ Generado local (no se pudo subir a Drive)")
+
+    msg = "\n".join(lines)
+    meta = {"relacion_surtido": True, "destinos": rs["destinos_count"]}
+    if drive_link:
+        meta["drive_link"] = drive_link
+    message_log.log_message("out", phone, "text", msg,
+                             _meta_with_agent(meta, agente))
+    return {"relacion_surtido": True, "drive_link": drive_link,
+            "destinos": rs["destinos_count"]}
 
 
 def _generar_relacion_handler(phone: str, fecha_iso: str | None = None) -> dict:
@@ -978,6 +1154,27 @@ def _meta_with_agent(meta: dict | None, agente: dict | None) -> dict:
     return m
 
 
+def _label_destinos(agente: dict | None, n: int = 0) -> str:
+    """Devuelve el sustantivo correcto para describir destinos según el
+    tipo de agente activo, en singular o plural según n.
+
+    Ejemplos:
+      tipo=comedores, n=1 → 'comedor'
+      tipo=comedores, n=6 → 'comedores'
+      tipo=hospitales, n=5 → 'hospitales'
+      tipo=dif, n=3 → 'centros DIF'
+      tipo=None, n=4 → 'destinos'
+    """
+    tipo = (agente or {}).get("tipo")
+    if tipo == "comedores":
+        return "comedor" if n == 1 else "comedores"
+    if tipo == "hospitales":
+        return "hospital" if n == 1 else "hospitales"
+    if tipo == "dif":
+        return "centro DIF" if n == 1 else "centros DIF"
+    return "destino" if n == 1 else "destinos"
+
+
 def _consolidar_notas(phone: str, fecha_iso: str | None = None,
                        agente: dict | None = None) -> dict:
     """Genera un PDF único con TODAS las notas vigentes (estado actual).
@@ -1072,7 +1269,7 @@ def _consolidar_notas(phone: str, fecha_iso: str | None = None,
 
     lines = [
         f"📑 *Notas de remisión consolidadas* — {fecha_legible}",
-        f"Total de notas: {notas_count} hospitales",
+        f"Total de notas: {notas_count} {_label_destinos(agente, notas_count)}",
     ]
     if drive_link:
         lines.append(f"🖨️ PDF para imprimir todas juntas: {drive_link}")

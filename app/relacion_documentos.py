@@ -625,6 +625,232 @@ def generar_relacion_dia_pdf(fecha_iso: str,
     }
 
 
+def generar_relacion_surtido_pdf(fecha_iso: str,
+                                   fecha_legible: str | None = None,
+                                   agente: dict | None = None,
+                                   output_path: Path | None = None) -> dict:
+    """Genera el PDF de 'Relación de documentos a surtir' para un día.
+
+    Es una hoja imprimible que el surtidor lleva al almacén/cliente:
+    lista los destinos que tienen pedido vigente ese día, cuántos
+    productos cargar, el folio de la nota de remisión y un casillero
+    para marcar cuando ya se entregó.
+
+    Filtra por el tipo del agente activo (hospitales/comedores/dif) y
+    también incluye los destinos de extras (ALMACÉN EHMO, etc.) si los
+    hay y pertenecen al agente.
+    """
+    estado = cargar_estado(fecha_iso)
+    if not estado:
+        return {"error": f"No hay estado del día {fecha_iso}"}
+
+    fecha_legible = fecha_legible or estado.get("fecha_legible", fecha_iso)
+    fecha_dt = datetime.strptime(fecha_iso, "%Y-%m-%d")
+
+    agente_tipo = (agente or {}).get("tipo")
+    agente_nombre = (agente or {}).get("nombre", "")
+
+    # Importar el filtro por tipo (mismo criterio que el resto del sistema)
+    try:
+        from .estado_pedido import _destino_pertenece_al_agente
+    except Exception:
+        _destino_pertenece_al_agente = lambda d, t: True
+
+    # Pedido normal: destinos con productos vigentes del tipo del agente
+    destinos_activos = []
+    for h, info in estado.get("hospitales", {}).items():
+        if not _destino_pertenece_al_agente(h, agente_tipo):
+            continue
+        productos_vivos = [p for p in info.get("productos", [])
+                            if (p.get("cantidad") or 0) > 0]
+        if not productos_vivos and info.get("total", 0) <= 0:
+            continue
+        destinos_activos.append({
+            "destino": h,
+            "n_productos": len(productos_vivos),
+            "folio": info.get("folio_remision") or "",
+            "total": info.get("total", 0),
+            "tipo": "regular",
+        })
+
+    # Extras: destinos de extras del día (ej. ALMACÉN EHMO) — si pertenecen
+    # al agente activo
+    try:
+        from .extras_pedido import cargar_extras
+        ex_state = cargar_extras(fecha_iso)
+    except Exception:
+        ex_state = None
+    if ex_state:
+        folios_ex = ex_state.get("folios_por_destino") or {}
+        items_por_destino: dict[str, list] = {}
+        for e in ex_state.get("extras", []):
+            if (e.get("cantidad") or 0) <= 0:
+                continue
+            items_por_destino.setdefault(e.get("hospital", "ALMACÉN EHMO"), []).append(e)
+        for d, items in items_por_destino.items():
+            if not _destino_pertenece_al_agente(d, agente_tipo):
+                continue
+            destinos_activos.append({
+                "destino": f"{d} (EXTRA)",
+                "n_productos": len(items),
+                "folio": folios_ex.get(d) or "",
+                "total": sum(e.get("importe", 0) for e in items),
+                "tipo": "extra",
+            })
+
+    # Orden alfabético, pero EXTRAS al final
+    destinos_activos.sort(key=lambda x: (x["tipo"] == "extra", x["destino"]))
+
+    if not destinos_activos:
+        return {"error": f"Sin destinos del agente '{agente_tipo}' para "
+                          f"surtir el {fecha_iso}"}
+
+    # Etiquetas según tipo de agente
+    if agente_tipo == "comedores":
+        titulo_base = "COMEDORES"
+        col_destino = "COMEDOR"
+        col_destino_plural_low = "comedores"
+    elif agente_tipo == "dif":
+        titulo_base = "CENTROS DIF"
+        col_destino = "CENTRO DIF"
+        col_destino_plural_low = "centros DIF"
+    else:
+        titulo_base = "HOSPITALES"
+        col_destino = "HOSPITAL"
+        col_destino_plural_low = "hospitales"
+
+    if not output_path:
+        suffix = f"_{agente_tipo}" if agente_tipo else ""
+        output_path = (config.PROCESSED_DIR /
+                       f"Relación a Surtir {fecha_legible}{suffix} ({fecha_iso}).pdf")
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # ─── Estilos PDF ─────────────────────────────────────────────────────────
+    rl_AZUL_OSC = rl_colors.HexColor(f"#{AZUL_OSC}")
+    rl_AMARILLO = rl_colors.HexColor(f"#{AMARILLO}")
+    rl_GRIS = rl_colors.HexColor(f"#{GRIS}")
+
+    doc = SimpleDocTemplate(
+        str(output_path),
+        pagesize=letter,  # portrait
+        topMargin=1.0 * cm, bottomMargin=1.0 * cm,
+        leftMargin=1.2 * cm, rightMargin=1.2 * cm,
+        title=f"Relación a surtir {fecha_legible}",
+    )
+
+    styles = getSampleStyleSheet()
+    style_titulo = ParagraphStyle(
+        "tit", parent=styles["Heading1"],
+        fontSize=14, leading=17, alignment=TA_CENTER, textColor=rl_AZUL_OSC,
+        spaceAfter=2, fontName="Helvetica-Bold",
+    )
+    style_sub = ParagraphStyle(
+        "sub", parent=styles["Normal"],
+        fontSize=11, leading=13, alignment=TA_CENTER,
+        textColor=rl_colors.HexColor("#444"), spaceAfter=10,
+    )
+    style_cell = ParagraphStyle(
+        "cell", parent=styles["Normal"],
+        fontSize=10, leading=12, alignment=TA_LEFT,
+    )
+    style_cell_center = ParagraphStyle(
+        "cell_c", parent=style_cell, alignment=TA_CENTER,
+    )
+
+    # Header del documento
+    titulo = f"RELACIÓN A SURTIR — {titulo_base}"
+    sub = (f"{DIAS_NOMBRE[fecha_dt.weekday()]} "
+           f"{fecha_dt.day} DE {MESES_NOMBRE[fecha_dt.month]} {fecha_dt.year}")
+    if agente_nombre:
+        sub += f" &nbsp;·&nbsp; {agente_nombre}"
+
+    elements = [
+        Paragraph(titulo, style_titulo),
+        Paragraph(sub, style_sub),
+    ]
+
+    # Tabla — la columna SURTIDO va vacía (con border) para que el
+    # surtidor palomée a mano. Usar un glifo Unicode rinde mal con
+    # Helvetica (cae a cuadrado lleno), por eso preferimos celda en blanco.
+    headers = ["#", col_destino, "PRODUCTOS", "FOLIO", "SURTIDO"]
+    data = [headers]
+    for i, d in enumerate(destinos_activos, 1):
+        folio_str = ""
+        if d["folio"]:
+            try:
+                folio_str = str(int(d["folio"]))
+            except (TypeError, ValueError):
+                folio_str = str(d["folio"])
+        data.append([
+            str(i),
+            Paragraph(d["destino"], style_cell),
+            Paragraph(str(d["n_productos"]), style_cell_center),
+            Paragraph(folio_str, style_cell_center),
+            "",
+        ])
+
+    # Anchos: portrait letter útil ~17.5 cm
+    col_widths = [0.9, 10.5, 2.0, 2.2, 2.0]
+    table = RlTable(
+        data, colWidths=[w * cm for w in col_widths], repeatRows=1,
+    )
+    table.setStyle(RlTableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), rl_AZUL_OSC),
+        ("TEXTCOLOR", (0, 0), (-1, 0), rl_colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, 0), 9),
+        ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("ALIGN", (0, 1), (0, -1), "CENTER"),
+        ("ALIGN", (2, 1), (2, -1), "CENTER"),
+        ("ALIGN", (3, 1), (3, -1), "CENTER"),
+        ("ALIGN", (4, 1), (4, -1), "CENTER"),
+        ("FONTSIZE", (0, 1), (-1, -1), 10),
+        ("GRID", (0, 0), (-1, -1), 0.4, rl_GRIS),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1),
+            [rl_colors.white, rl_colors.HexColor("#F8F9FB")]),
+        ("LEFTPADDING", (0, 0), (-1, -1), 5),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        # Filas del cuerpo más altas para que la celda SURTIDO sea fácil
+        # de palomear a mano.
+        ("TOPPADDING", (0, 1), (-1, -1), 9),
+        ("BOTTOMPADDING", (0, 1), (-1, -1), 9),
+    ]))
+    elements.append(table)
+
+    # Footer: línea para firma del surtidor + total destinos
+    elements.append(Spacer(1, 0.8 * cm))
+    elements.append(Paragraph(
+        f"<b>Total de {col_destino_plural_low} a surtir:</b> {len(destinos_activos)}",
+        ParagraphStyle("foot", parent=styles["Normal"], fontSize=11,
+                        leading=14, alignment=TA_LEFT)))
+    elements.append(Spacer(1, 1.2 * cm))
+    elements.append(Paragraph(
+        "Surtidor: ____________________________ &nbsp;&nbsp;&nbsp; "
+        "Fecha y hora: ____________________________",
+        ParagraphStyle("firma", parent=styles["Normal"], fontSize=10,
+                        leading=14, alignment=TA_LEFT)))
+
+    doc.build(elements)
+    log.info(f"Relación a surtir PDF generada: {output_path}")
+    log_event("processor",
+              f"🚚 Relación a surtir ({titulo_base.lower()}) — "
+              f"{len(destinos_activos)} destino(s)",
+              {"output": output_path.name,
+                "destinos": len(destinos_activos),
+                "agent_tipo": agente_tipo})
+
+    return {
+        "output_path": output_path,
+        "fecha": fecha_iso,
+        "destinos_count": len(destinos_activos),
+        "agent_tipo": agente_tipo,
+    }
+
+
 def generar_relacion_semanal(semana_ehmo: int, year: int | None = None,
                               output_path: Path | None = None) -> dict:
     """Genera el Excel de Relación de Documentos para una semana completa."""

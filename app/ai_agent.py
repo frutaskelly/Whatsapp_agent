@@ -300,6 +300,21 @@ Cada folio tiene un estado: 🆕 vigente · 🔄 modificado · ✅ aceptado · �
    Responde breve: "Genero la relación vigente, te paso los archivos."
    accion = "generar_relacion".
 
+▸ F-bis) RELACIÓN A SURTIR (PDF para el surtidor) → "generar_relacion_surtido"
+   El operador quiere un PDF imprimible con la lista de destinos a surtir
+   hoy (un solo papel que el surtidor lleva al almacén/cliente, con
+   destino + folio + # productos + casillero para palomear). Diferente
+   de "generar_relacion" (la de facturación con totales y precios).
+   Frases típicas:
+     - "dame la relación a surtir"
+     - "lista de surtido en pdf"
+     - "relación de documentos a surtir"
+     - "imprime la lista para el surtidor"
+     - "necesito la hoja del surtidor del día 28"
+   Si el operador menciona día (ej. "del 28"), agrega datos.fecha_iso.
+   Responde breve: "Te paso la relación a surtir en PDF ahorita."
+   accion = "generar_relacion_surtido".
+
 ▸ E) CONSOLIDAR NOTAS DE REMISIÓN VIGENTES → "consolidar_notas"
    El operador quiere un PDF único con TODAS las notas de los hospitales del
    día en su versión más reciente (después de modificaciones y ajustes).
@@ -357,6 +372,7 @@ Responde SIEMPRE con un JSON válido (sin markdown, sin texto antes/después):
                "extra_pedido" | "extra_pedido_multi" |
                "ajuste_entrega" | "ajuste_entrega_multi" |
                "consolidar_notas" | "generar_relacion" |
+               "generar_relacion_surtido" |
                "imprimir_nota_folio" |
                "aceptar_folio" | "cancelar_folio" | "reactivar_folio" |
                "reporte_control" | "recargar_precios" |
@@ -365,6 +381,7 @@ Responde SIEMPRE con un JSON válido (sin markdown, sin texto antes/después):
   "accion": "procesar_archivo" | "procesar_libreta" | "registrar_pesos" |
             "aplicar_modificacion" | "aplicar_extra" | "aplicar_ajuste" |
             "consolidar_notas" | "generar_relacion" |
+            "generar_relacion_surtido" |
             "imprimir_nota_folio" |
             "aceptar_folio" | "cancelar_folio" | "reactivar_folio" |
             "reporte_control" | "recargar_precios" | "nada",

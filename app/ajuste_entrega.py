@@ -123,8 +123,8 @@ def aplicar_ajustes(hospital_input: str, ajustes: list[dict],
     hospital_resuelto = _resolver_hospital(hospital_input, hospitales_estado)
     if not hospital_resuelto:
         return {"ok": False,
-                "error": f"No reconocí el hospital '{hospital_input}'. "
-                         f"Hospitales del día: {hospitales_estado}",
+                "error": f"No reconocí el destino '{hospital_input}'. "
+                         f"Destinos del día: {hospitales_estado}",
                 "cambios": []}
 
     info_hosp = state["hospitales"][hospital_resuelto]

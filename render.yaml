@@ -1,40 +1,35 @@
 # Configuración para deploy automático en Render.
 # Render lee este archivo cuando conectas el repo de GitHub.
 #
-# IMPORTANTE — persistencia del state:
-#   Hoy corre en plan free, sin disco persistente. El state runtime
-#   (pedidos_dia, extras_dia, folio counters, conversations, logs) se
-#   borra en cada redeploy y se re-siembra desde lo committed en
-#   `whatsapp_agent/storage/` vía `app/bootstrap.py`.
-#
-#   Para que el state SOBREVIVA redeploys hay dos caminos:
-#   1) Auto-host (Mac mini + Cloudflare Tunnel) — recomendado.
-#   2) Render Starter ($7/mes) + persistent disk:
-#        plan: starter
-#        disk:
-#          name: storage
-#          mountPath: /var/data
-#          sizeGB: 1
-#        envVars:
-#          - key: STORAGE_DIR
-#            value: /var/data
-#      El bootstrap copia los seeds del repo al disco vacío en el
-#      primer arranque y a partir de ahí los redeploys no lo tocan.
+# IMPORTANTE — disco persistente:
+#   Para que el state runtime (pedidos_dia, extras_dia, folio counters,
+#   conversations, logs, configs editables) NO se borre en cada redeploy,
+#   este servicio usa un Persistent Disk montado en /var/data, y la app
+#   apunta STORAGE_DIR=/var/data. Esto requiere plan Starter ($7/mes).
+#   En el primer arranque, app/bootstrap.py copia los seeds del repo
+#   (whatsapp_agent/storage/) al disco vacío y a partir de ahí los
+#   redeploys ya no lo tocan.
 
 services:
   - type: web
     name: frutaskelly-whatsapp-agent
     runtime: python
-    plan: free  # cambiar a "starter" si se activa persistent disk
+    plan: starter  # $7/mes — necesario para persistent disk
     region: oregon
     branch: main
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 120 app.main:app
+    disk:
+      name: storage
+      mountPath: /var/data
+      sizeGB: 1  # holgado para JSONs, folio counters, conversations, logs
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.10
       - key: ENVIRONMENT
         value: production
+      - key: STORAGE_DIR
+        value: /var/data
       # Las variables sensibles se configuran desde el dashboard de Render
       # NO ponerlas aquí (se subiría a GitHub):
       # - WHATSAPP_ACCESS_TOKEN

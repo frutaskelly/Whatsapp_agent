@@ -14,7 +14,11 @@ services:
   - type: web
     name: frutaskelly-whatsapp-agent
     runtime: python
-    plan: starter  # $7/mes — necesario para persistent disk
+    # NO declaramos `plan` aquí a propósito: dejamos que el dashboard de
+    # Render sea la fuente de verdad. Si declaramos plan: starter aquí y
+    # el dashboard tiene Pro, Render baja el servicio a Starter en el
+    # próximo deploy (sobreescribe el upgrade manual). El persistent disk
+    # solo requiere starter o superior — y ambos están disponibles.
     region: oregon
     branch: main
     buildCommand: pip install -r requirements.txt
